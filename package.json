@@ -1,0 +1,36 @@
+{
+  "name": "dev-bot",
+  "version": "1.0.0",
+  "description": "scoutgame dev token price tracker bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "nodemon --watch src -e ts --exec \"ts-node src/index.ts\""
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "discord.js",
+    "web3"
+  ],
+  "author": "Etherion-Tools",
+  "license": "MIT",
+  "dependencies": {
+    "@logtail/pino": "^0.4.20",
+    "discord.js": "^14.7.1",
+    "dotenv": "^16.0.3",
+    "node-cron": "^4.0.5",
+    "pino": "^9.6.0",
+    "viem": "^2.29.2"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.9.0",
+    "@types/node": "^22.15.17",
+    "nodemon": "^2.0.15",
+    "pino-pretty": "^10.3.1",
+    "prisma": "^6.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
