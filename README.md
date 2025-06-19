@@ -41,6 +41,9 @@ With the bot running and invited to a server:
 
 - `!ping` -> `Pong!` (using default prefix).
 
+## Slash Commands
+- [Bot Slash Commands](/src/docs/features.md)
+
 ## Project Structure
 
 - `src/`: TypeScript source files (main logic in `src/index.ts`).
@@ -60,4 +63,4 @@ With the bot running and invited to a server:
 ## TODO
 
 - Implement the `/linkwallet [wallet_address]` command: Allow users to link their wallets.
-- Accept multiple tokens
+- Accept multiple tokens 
