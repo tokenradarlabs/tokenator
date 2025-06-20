@@ -12,7 +12,6 @@ import {
 import logger from "./utils/logger";
 import { startDevPriceUpdateJob } from "./cron/priceUpdateJob";
 import { fetchTokenPrice, formatNumber } from "./utils/coinGecko";
-import { UNISWAP_LINK } from "./utils/constants";
 import {
   createPriceAlertCommand,
   handleCreatePriceAlert,
@@ -52,50 +51,43 @@ const commandsData: ApplicationCommandDataResolvable[] = [
     .setName("price")
     .setDescription("Fetches and displays the current token price.")
     .addStringOption((option) =>
-      option.setName("token")
-        .setDescription("The token to fetch the price for.")
+      option
+        .setName("token-id")
+        .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
-        .addChoices(
-          { name: 'DEV', value: 'DEV' },
-        ))
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName("uniswap")
-    .setDescription("Returns the Uniswap link for the token.")
+    )
     .toJSON(),
   new SlashCommandBuilder()
     .setName("mcap")
     .setDescription("Returns the market cap of the token.")
-    .addStringOption(option =>
-      option.setName("token")
-        .setDescription("The token to fetch the market cap for.")
+    .addStringOption((option) =>
+      option
+        .setName("token-id")
+        .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
-        .addChoices(
-          { name: 'DEV', value: 'DEV' },
-        ))
+    )
     .toJSON(),
   new SlashCommandBuilder()
     .setName("price-change")
     .setDescription(
-      "Returns the price change over the last 24 hours of the token.")
-    .addStringOption(option =>
-      option.setName("token")
-        .setDescription("The token to fetch the price change for.")
+      "Returns the price change over the last 24 hours of the token."
+    )
+    .addStringOption((option) =>
+      option
+        .setName("token-id")
+        .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
-        .addChoices(
-          { name: 'DEV', value: 'DEV' },
-        ))
+    )
     .toJSON(),
   new SlashCommandBuilder()
     .setName("volume")
     .setDescription("Returns the 24h volume of the token.")
-    .addStringOption(option =>
-      option.setName("token")
-        .setDescription("The token to fetch the volume for.")
+    .addStringOption((option) =>
+      option
+        .setName("token-id")
+        .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
-        .addChoices(
-          { name: 'DEV', value: 'DEV' },
-        ))
+    )
     .toJSON(),
   new SlashCommandBuilder()
     .setName("total-price")
@@ -108,13 +100,12 @@ const commandsData: ApplicationCommandDataResolvable[] = [
         .setDescription("The amount of tokens")
         .setRequired(true)
     )
-    .addStringOption(option =>
-      option.setName("token")
-        .setDescription("The token to calculate the price for.")
+    .addStringOption((option) =>
+      option
+        .setName("token-id")
+        .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
-        .addChoices(
-          { name: 'DEV', value: 'DEV' },
-        ))
+    )
     .toJSON(),
   createPriceAlertCommand,
   listPriceAlertsCommand,
@@ -146,89 +137,87 @@ async function handleInteractionCommands(
   if (commandName === "ping") {
     await interaction.reply("Pong!");
   } else if (commandName === "price") {
-    const tokenName = interaction.options.getString("token", true);
+    const tokenId = interaction.options.getString("token-id", true);
     try {
-      const price = await getDevPrice();
+      const price = await fetchTokenPrice(tokenId);
       if (price) {
-        const replyMessage = `**${tokenName} Token Price:** $${price.toFixed(5)}\n`;
+        const replyMessage = `**${tokenId}** Token Price: $${price.usd.toFixed(5)}\n`;
         await interaction.reply(replyMessage);
       } else {
         await interaction.reply(
-          `Sorry, couldn't fetch the ${tokenName} price right now. Please try again later.`
+          `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
         );
       }
     } catch (error) {
-      logger.error(`Error fetching ${tokenName} price from Uniswap`, error);
+      logger.error(`Error fetching **${tokenId}** price from CoinGecko`, error);
       await interaction.reply(
-        `Sorry, couldn't fetch the ${tokenName} price right now. Please try again later.`
+        `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
       );
     }
-  } else if (commandName === "uniswap") {
-    await interaction.reply(UNISWAP_LINK);
   } else if (commandName === "volume") {
-    const tokenName = interaction.options.getString("token", true);
-    const tokenData = await fetchTokenPrice("scout-protocol-token");
+    const tokenId = interaction.options.getString("token-id", true);
+    const tokenData = await fetchTokenPrice(tokenId);
     if (tokenData) {
-      const replyMessage = `**${tokenName} Token 24h Volume:** $${tokenData.usd_24h_vol?.toFixed(
+      const replyMessage = `**${tokenId}** Token 24h Volume: $${tokenData.usd_24h_vol?.toFixed(
         2
       )}`;
       await interaction.reply(replyMessage);
     } else {
       await interaction.reply(
-        `Sorry, couldn't fetch the ${tokenName} volume right now. Please try again later.`
+        `Sorry, couldn't fetch the **${tokenId}** volume right now. Please try again later.`
       );
     }
   } else if (commandName === "price-change") {
-    const tokenName = interaction.options.getString("token", true);
-    const tokenData = await fetchTokenPrice("scout-protocol-token");
+    const tokenId = interaction.options.getString("token-id", true);
+    const tokenData = await fetchTokenPrice(tokenId);
     if (tokenData) {
       const change24h = tokenData.usd_24h_change;
       const changeEmoji = change24h! >= 0 ? "📈" : "📉";
-      const replyMessage = `**${tokenName} Token 24h Price Change:** ${changeEmoji}${change24h?.toFixed(
+      const replyMessage = `**${tokenId}** Token 24h Price Change: ${changeEmoji}${change24h?.toFixed(
         2
       )}%`;
       await interaction.reply(replyMessage);
     } else {
       await interaction.reply(
-        `Sorry, couldn't fetch the ${tokenName} price change right now. Please try again later.`
+        `Sorry, couldn't fetch the **${tokenId}** price change right now. Please try again later.`
       );
     }
   } else if (commandName === "mcap") {
-    const tokenName = interaction.options.getString("token", true);
-    const tokenData = await fetchTokenPrice("scout-protocol-token");
+    const tokenId = interaction.options.getString("token-id", true);
+    const tokenData = await fetchTokenPrice(tokenId);
     if (tokenData && typeof tokenData.usd_market_cap === "number") {
       const formattedMarketCap = formatNumber(tokenData.usd_market_cap);
-      const replyMessage = `**${tokenName} Token Market Cap:** $${formattedMarketCap}`;
+      const replyMessage = `**${tokenId}** Token Market Cap: $${formattedMarketCap}`;
       await interaction.reply(replyMessage);
     } else {
       await interaction.reply(
-        `Sorry, couldn't fetch the ${tokenName} market cap right now. Please try again later.`
+        `Sorry, couldn't fetch the **${tokenId}** market cap right now. Please try again later.`
       );
     }
   } else if (commandName === "total-price") {
     const amount = interaction.options.getNumber("amount", true);
-    const tokenName = interaction.options.getString("token", true);
+    const tokenId = interaction.options.getString("token-id", true);
     try {
-      const price = await getDevPrice();
+      const price = await fetchTokenPrice(tokenId);
       if (price) {
-        const totalUsdPrice = amount * price;
+        const totalUsdPrice = amount * price.usd;
         const roundedUpPrice = Math.round(totalUsdPrice * 1000) / 1000;
-        const replyMessage = `**${amount} ${tokenName} tokens are currently worth:** $${roundedUpPrice.toFixed(
+        const replyMessage = `**${amount} ${tokenId}** tokens are currently worth: $${roundedUpPrice.toFixed(
           3
         )}`;
         await interaction.reply(replyMessage);
       } else {
         await interaction.reply(
-          `Sorry, couldn't fetch the ${tokenName} price right now. Please try again later.`
+          `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
         );
       }
     } catch (error) {
       logger.error(
-        `Error fetching ${tokenName} price from Uniswap for total-price`,
+        `Error fetching **${tokenId}** price for total-price`,
         error
       );
       await interaction.reply(
-        `Sorry, couldn't fetch the ${tokenName} price right now. Please try again later.`
+        `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
       );
     }
   } else if (commandName === "create-price-alert") {
