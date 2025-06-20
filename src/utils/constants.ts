@@ -1,1 +1,0 @@
-export const UNISWAP_LINK = "https://app.uniswap.org/explore/tokens/base/0x047157cffb8841a64db93fd4e29fa3796b78466c";
