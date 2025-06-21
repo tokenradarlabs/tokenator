@@ -14,6 +14,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Token {
+  id          String  @id @default(uuid())
+  address     String  @unique
+  alerts      Alert[]
+}
+
 model DiscordServer {
   id     String  @id @unique
   name   String?
@@ -34,6 +40,8 @@ model Alert {
   priceAlert      PriceAlert?   @relation("AlertToPriceAlert")
   discordServerId String
   discordServer   DiscordServer @relation(fields: [discordServerId], references: [id])
+  tokenId         String
+  token           Token         @relation(fields: [tokenId], references: [id])
 }
 
 model PriceAlert {
