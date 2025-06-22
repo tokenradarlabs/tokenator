@@ -24,6 +24,12 @@ export const listPriceAlertsCommand = new SlashCommandBuilder()
       .setRequired(false)
       .addChoices({ name: "Price", value: "price" })
   )
+  .addStringOption((option) =>
+    option
+      .setName("token")
+      .setDescription("Filter by token address")
+      .setRequired(false)
+  )
   .toJSON();
 
 export async function handleListPriceAlerts(
@@ -32,6 +38,7 @@ export async function handleListPriceAlerts(
   const { guildId, channelId } = interaction;
   const direction = interaction.options.getString("direction") as PriceAlertDirection | null;
   const type = interaction.options.getString("type");
+  const tokenAddress = interaction.options.getString("token");
 
   if (!guildId || !channelId) {
     await interaction.reply({
@@ -54,10 +61,15 @@ export async function handleListPriceAlerts(
       whereClause.priceAlert = { direction: direction };
     }
 
+    if (tokenAddress) {
+      whereClause.token = { address: tokenAddress };
+    }
+
     const alerts = await prisma.alert.findMany({
       where: whereClause,
       include: {
         priceAlert: true,
+        token: true,
       },
       orderBy: {
         createdAt: 'desc'
@@ -82,6 +94,7 @@ export async function handleListPriceAlerts(
         if (alert.priceAlert) {
             const directionEmoji = alert.priceAlert.direction === 'up' ? '📈' : '📉';
             description += `**ID:** \`${alert.id}\`\n`;
+            description += `**Token:** \`${alert.token.address}\`\n`;
             description += `**Type:** Price\n`;
             description += `**Direction:** ${alert.priceAlert.direction} ${directionEmoji}\n`;
             description += `**Value:** $${alert.priceAlert.value}\n`;
