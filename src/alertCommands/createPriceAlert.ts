@@ -83,7 +83,7 @@ export async function handleCreatePriceAlert(interaction: ChatInputCommandIntera
     const tokenData = await fetchTokenPrice(tokenId);
     if (tokenData) {
       const price = tokenData.usd;
-      await interaction.reply(`✅ Alert created! I will notify you in this channel when the price of **${tokenId}** goes ${direction} to $${value}. ${directionEmoji}, the current price is \`$${price}\` `);
+      await interaction.reply(`✅ Alert created! I will notify you in this channel when the price of **${tokenId}** goes ${direction} to \`$${value}\`. ${directionEmoji}, the current price is \`$${price}\` `);
     } else {
       await interaction.reply({
         content: `Sorry, couldn't fetch the **${tokenId}** token price right now. Please try again later.`,
