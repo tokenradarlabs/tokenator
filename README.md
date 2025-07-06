@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="tokenator.png" alt="Tokenator Logo" width="180"/>
+</p>
+
 # Tokenator
  A Discord bot that provides quick, real-time token price updates and market info on demand.
 
