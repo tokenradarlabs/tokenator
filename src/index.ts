@@ -144,17 +144,23 @@ async function handleInteractionCommands(
   } else if (commandName === "price") {
     const tokenId = interaction.options.getString("token-id", true);
     try {
-      const price = await fetchTokenPrice(tokenId);
-      if (price) {
-        const replyMessage = `**${tokenId}** Token Price: $${price.usd.toFixed(5)}\n`;
+      if (tokenId === "scout-protocol-token") {
+        const price = await getDevPrice();
+        const replyMessage = `**${tokenId}** Token Price: $${price.toFixed(5)}\n`;
         await interaction.reply(replyMessage);
       } else {
-        await interaction.reply(
-          `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
-        );
+        const price = await fetchTokenPrice(tokenId);
+        if (price) {
+          const replyMessage = `**${tokenId}** Token Price: $${price.usd.toFixed(5)}\n`;
+          await interaction.reply(replyMessage);
+        } else {
+          await interaction.reply(
+            `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
+          );
+        }
       }
     } catch (error) {
-      logger.error(`Error fetching **${tokenId}** price from CoinGecko`, error);
+      logger.error(`Error fetching **${tokenId}** price`, error);
       await interaction.reply(
         `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
       );
