@@ -18,6 +18,7 @@ model Token {
   id          String  @id @default(uuid())
   address     String  @unique
   alerts      Alert[]
+  prices      TokenPrice[]
 }
 
 model DiscordServer {
@@ -50,4 +51,15 @@ model PriceAlert {
   value     Float
   alertId   String              @unique
   alert     Alert               @relation("AlertToPriceAlert", fields: [alertId], references: [id])
+}
+
+model TokenPrice {
+  id        String   @id @default(uuid())
+  price     Float
+  timestamp DateTime @default(now())
+  tokenId   String
+  token     Token    @relation(fields: [tokenId], references: [id])
+
+  @@index([timestamp])
+  @@index([tokenId])
 }
