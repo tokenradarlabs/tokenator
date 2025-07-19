@@ -179,7 +179,7 @@ async function handleInteractionCommands(
         );
       }
     } catch (error) {
-      logger.error(`Error fetching **${tokenId}** price from database`, error);
+      logger.error(`Error fetching **${tokenId}** price`, error);
       await interaction.reply(
         `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
       );
