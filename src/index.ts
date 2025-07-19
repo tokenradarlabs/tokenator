@@ -30,6 +30,7 @@ import {
 } from "./alertCommands/deletePriceAlert";
 
 import { getDevPrice, getBtcPrice, getEthPrice } from "./utils/uniswapPrice";
+import prisma from "./utils/prisma";
 
 const token: string | undefined = process.env.DISCORD_TOKEN;
 
@@ -150,28 +151,32 @@ async function handleInteractionCommands(
   } else if (commandName === "price") {
     const tokenId = interaction.options.getString("token-id", true);
     try {
-      if (tokenId === "scout-protocol-token") {
-        const price = await getDevPrice();
-        const replyMessage = `**${tokenId}** Token Price: $${price.toFixed(5)}\n`;
-        await interaction.reply(replyMessage);
-      } else if ( tokenId === "bitcoin") {
-        const price = await getBtcPrice();
-        const replyMessage = `**${tokenId}** Price: $${price.toFixed(2)}\n`;
-        await interaction.reply(replyMessage);
-      } else if (tokenId === "eth") {
-        const price = await getEthPrice();
-        const replyMessage = `**${tokenId}** Price: $${price.toFixed(2)}\n`;
+      // Get the latest price from the database
+      const latestPrice = await prisma.tokenPrice.findFirst({
+        where: {
+          token: {
+            address: tokenId
+          }
+        },
+        orderBy: {
+          timestamp: 'desc'
+        },
+        include: {
+          token: true
+        }
+      });
+
+      if (latestPrice) {
+        const formattedPrice = tokenId === "scout-protocol-token" ? 
+          latestPrice.price.toFixed(5) : 
+          latestPrice.price.toFixed(2);
+          
+        const replyMessage = `**${tokenId}** Price: $${formattedPrice}\n`;
         await interaction.reply(replyMessage);
       } else {
-        const price = await fetchTokenPrice(tokenId);
-        if (price) {
-          const replyMessage = `**${tokenId}** Token Price: $${price.usd.toFixed(5)}\n`;
-          await interaction.reply(replyMessage);
-        } else {
-          await interaction.reply(
-            `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
-          );
-        }
+        await interaction.reply(
+          `Sorry, couldn't find any price data for **${tokenId}**. Please try again later.`
+        );
       }
     } catch (error) {
       logger.error(`Error fetching **${tokenId}** price`, error);
