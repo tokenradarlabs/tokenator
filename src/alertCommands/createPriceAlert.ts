@@ -1,15 +1,58 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import logger from "../utils/logger";
 import prisma from "../utils/prisma";
-import { fetchTokenPrice } from "../utils/coinGecko";
+import { getDevPrice, getBtcPrice, getEthPrice } from "../utils/uniswapPrice";
+
+// Supported tokens and their normalized IDs
+const SUPPORTED_TOKENS = {
+  'dev-protocol': 'dev-protocol',
+  'dev': 'dev-protocol',
+  'bitcoin': 'bitcoin',
+  'btc': 'bitcoin',
+  'ethereum': 'ethereum',
+  'eth': 'ethereum'
+} as const;
+
+type SupportedTokenId = keyof typeof SUPPORTED_TOKENS;
+
+async function getTokenPrice(tokenId: string): Promise<number | null> {
+  const normalizedTokenId = tokenId.toLowerCase() as SupportedTokenId;
+  const standardizedId = SUPPORTED_TOKENS[normalizedTokenId];
+  
+  if (!standardizedId) {
+    logger.warn(`Unsupported token ID: ${tokenId}`);
+    return null;
+  }
+
+  try {
+    switch (standardizedId) {
+      case 'dev-protocol':
+        return await getDevPrice();
+      case 'bitcoin':
+        return await getBtcPrice();
+      case 'ethereum':
+        return await getEthPrice();
+      default:
+        return null;
+    }
+  } catch (error) {
+    logger.error("Error fetching token price:", error);
+    return null;
+  }
+}
 
 export const createPriceAlertCommand = new SlashCommandBuilder()
   .setName("create-price-alert")
-  .setDescription("Creates a price alert for a token.")
+  .setDescription("Creates a price alert for a supported token.")
   .addStringOption(option =>
     option.setName("token-id")
-      .setDescription("The token ID to create an alert for (e.g. scout-protocol-token)")
-      .setRequired(true))
+      .setDescription("The token to create an alert for (supported: dev, eth, btc)")
+      .setRequired(true)
+      .addChoices(
+        { name: 'DEV', value: 'dev-protocol' },
+        { name: 'Bitcoin (BTC)', value: 'bitcoin' },
+        { name: 'Ethereum (ETH)', value: 'ethereum' }
+      ))
   .addStringOption(option =>
     option.setName("direction")
       .setDescription("Price direction to alert on")
@@ -46,6 +89,14 @@ export async function handleCreatePriceAlert(interaction: ChatInputCommandIntera
     return;
   }
 
+  if (!(tokenId.toLowerCase() in SUPPORTED_TOKENS)) {
+    await interaction.reply({
+      content: "Unsupported token. Please use one of: DEV, BTC, or ETH.",
+      flags: 64
+    });
+    return;
+  }
+
   try {
     await prisma.$transaction(async (prisma) => {
       // Ensure server exists and is up to date
@@ -55,11 +106,12 @@ export async function handleCreatePriceAlert(interaction: ChatInputCommandIntera
         create: { id: guildId, name: interaction.guild?.name }
       });
 
-      // Ensure token exists
+      // Ensure token exists with standardized ID
+      const standardizedId = SUPPORTED_TOKENS[tokenId.toLowerCase() as SupportedTokenId];
       const token = await prisma.token.upsert({
-        where: { address: tokenId },
+        where: { address: standardizedId },
         update: {},
-        create: { address: tokenId }
+        create: { address: standardizedId }
       });
 
       // Create the Alert with nested PriceAlert creation
@@ -80,20 +132,20 @@ export async function handleCreatePriceAlert(interaction: ChatInputCommandIntera
     });
 
     const directionEmoji = direction === 'up' ? '📈' : '📉';
-    const tokenData = await fetchTokenPrice(tokenId);
-    if (tokenData) {
-      const price = tokenData.usd;
+    const price = await getTokenPrice(tokenId);
+    
+    if (price !== null) {
       await interaction.reply(`✅ Alert created! I will notify you in this channel when the price of **${tokenId}** goes ${direction} to \`$${value}\`. ${directionEmoji}, the current price is \`$${price}\` `);
     } else {
       await interaction.reply({
-        content: `Sorry, couldn't fetch the **${tokenId}** token price right now. Please try again later.`,
+        content: `Sorry, couldn't fetch the price right now. The alert has been created and will be checked when the price service is available.`,
         flags: 64
       });
     }
   } catch (error) {
     logger.error("Error creating price alert:", error);
     await interaction.reply({
-        content: `Sorry, couldn't fetch the **${tokenId}** token price right now. Please try again later.`,
+        content: "Sorry, there was an error creating the price alert. Please try again later.",
         flags: 64
     });
   }
