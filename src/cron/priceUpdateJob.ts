@@ -10,6 +10,34 @@ let latestBtcPrice: number | null = null;
 let latestEthPrice: number | null = null;
 
 /**
+ * Updates the token price in the database
+ * @param tokenAddress The token identifier
+ * @param price The current price of the token
+ */
+async function updateTokenPrice(tokenAddress: string, price: number) {
+  try {
+    // Get or create token
+    const token = await prisma.token.upsert({
+      where: { address: tokenAddress },
+      update: {},
+      create: { address: tokenAddress }
+    });
+
+    // Create price record
+    await prisma.tokenPrice.create({
+      data: {
+        price,
+        tokenId: token.id
+      }
+    });
+
+    logger.info(`[CronJob-TokenPrice] Stored price for ${tokenAddress}: $${price}`);
+  } catch (error) {
+    logger.error(`[CronJob-TokenPrice] Error storing price for ${tokenAddress}:`, error);
+  }
+}
+
+/**
  * Checks for any triggered price alerts and sends notifications.
  * @param client The Discord Client instance
  * @param tokenId The token identifier
@@ -92,7 +120,10 @@ async function updateMarketMetrics(client: Client) {
     try {
       const devPrice = await getDevPrice();
       latestDevPrice = devPrice;
-      await checkPriceAlerts(client, "scout-protocol-token", devPrice);
+      await Promise.all([
+        checkPriceAlerts(client, "scout-protocol-token", devPrice),
+        updateTokenPrice("scout-protocol-token", devPrice)
+      ]);
       logger.info(`[CronJob-MarketMetrics] Updated DEV price: $${devPrice}`);
     } catch (error) {
       logger.error(`[CronJob-MarketMetrics] Error updating DEV price:`, error);
@@ -102,15 +133,23 @@ async function updateMarketMetrics(client: Client) {
     try {
       const btcPrice = await getBtcPrice();
       latestBtcPrice = btcPrice;
-      await checkPriceAlerts(client, "bitcoin", btcPrice);
+      await Promise.all([
+        checkPriceAlerts(client, "bitcoin", btcPrice),
+        updateTokenPrice("bitcoin", btcPrice)
+      ]);
       logger.info(`[CronJob-MarketMetrics] Updated BTC price: $${btcPrice}`);
     } catch (error) {
       logger.error(`[CronJob-MarketMetrics] Error updating BTC price:`, error);
     }
+
+    // Update ETH price from Uniswap
     try {
       const ethPrice = await getEthPrice();
       latestEthPrice = ethPrice;
-      await checkPriceAlerts(client, "eth", ethPrice);
+      await Promise.all([
+        checkPriceAlerts(client, "eth", ethPrice),
+        updateTokenPrice("eth", ethPrice)
+      ]);
       logger.info(`[CronJob-MarketMetrics] Updated ETH price: $${ethPrice}`);
     } catch (error) {
       logger.error(`[CronJob-MarketMetrics] Error updating ETH price:`, error);
