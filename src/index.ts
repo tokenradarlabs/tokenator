@@ -29,7 +29,7 @@ import {
   handleDeletePriceAlert,
 } from "./alertCommands/deletePriceAlert";
 
-import { getDevPrice } from "./utils/uniswapPrice";
+import { getDevPrice, getBtcPrice, getEthPrice } from "./utils/uniswapPrice";
 
 const token: string | undefined = process.env.DISCORD_TOKEN;
 
@@ -59,6 +59,12 @@ const commandsData: ApplicationCommandDataResolvable[] = [
         .setName("token-id")
         .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
+        .addChoices(
+          { name: 'DEV Token', value: 'scout-protocol-token' },
+          { name: 'Bitcoin', value: 'bitcoin' },
+          { name: 'ETH', value: 'eth' }
+          
+        )
     )
     .toJSON(),
   new SlashCommandBuilder()
@@ -147,6 +153,14 @@ async function handleInteractionCommands(
       if (tokenId === "scout-protocol-token") {
         const price = await getDevPrice();
         const replyMessage = `**${tokenId}** Token Price: $${price.toFixed(5)}\n`;
+        await interaction.reply(replyMessage);
+      } else if ( tokenId === "bitcoin") {
+        const price = await getBtcPrice();
+        const replyMessage = `**${tokenId}** Price: $${price.toFixed(2)}\n`;
+        await interaction.reply(replyMessage);
+      } else if (tokenId === "eth") {
+        const price = await getEthPrice();
+        const replyMessage = `**${tokenId}** Price: $${price.toFixed(2)}\n`;
         await interaction.reply(replyMessage);
       } else {
         const price = await fetchTokenPrice(tokenId);

@@ -9,6 +9,8 @@ const DEV_WETH_POOL_ADDRESS_BASE: Address =
 const DEV_ADDRESS_BASE: Address = "0x047157cffb8841a64db93fd4e29fa3796b78466c";
 const WETH_ADDRESS_BASE: Address = "0x4200000000000000000000000000000000000006";
 const USDC_ADDRESS_BASE: Address = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const CBBTC_ADDRESS_BASE: Address = "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf";
+const CBBTC_USDC_POOL_ADDRESS_BASE: Address = "0xfbb6eed8e7aa03b138556eedaf5d271a5e1e43ef";
 
 // Token configurations
 const USDC: TokenConfig = {
@@ -24,6 +26,11 @@ const WETH: TokenConfig = {
 const DEV: TokenConfig = {
   address: DEV_ADDRESS_BASE,
   decimals: 18,
+};
+
+const CBBTC: TokenConfig = {
+  address: CBBTC_ADDRESS_BASE,
+  decimals: 8,
 };
 
 // Minimal ABI for Uniswap V3 Pool state
@@ -164,4 +171,11 @@ export async function getDevPrice(): Promise<number> {
     logger.error("Error fetching DEV price", error as Error);
     return 0;
   }
+}
+
+/**
+ * Get the price of BTC in terms of USDC
+ */
+export async function getBtcPrice(): Promise<number> {
+  return getTokenPrice(CBBTC_USDC_POOL_ADDRESS_BASE, CBBTC);
 }
