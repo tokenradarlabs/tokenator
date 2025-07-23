@@ -5,8 +5,8 @@ import { getDevPrice, getBtcPrice, getEthPrice } from "../utils/uniswapPrice";
 
 // Supported tokens and their normalized IDs
 const SUPPORTED_TOKENS = {
-  'dev-protocol': 'dev-protocol',
-  'dev': 'dev-protocol',
+  'scout-protocol-token': 'scout-protocol-token',
+  'dev': 'scout-protocol-token',
   'bitcoin': 'bitcoin',
   'btc': 'bitcoin',
   'ethereum': 'ethereum',
@@ -26,7 +26,7 @@ async function getTokenPrice(tokenId: string): Promise<number | null> {
 
   try {
     switch (standardizedId) {
-      case 'dev-protocol':
+      case 'scout-protocol-token':
         return await getDevPrice();
       case 'bitcoin':
         return await getBtcPrice();
@@ -49,7 +49,7 @@ export const createPriceAlertCommand = new SlashCommandBuilder()
       .setDescription("The token to create an alert for (supported: dev, eth, btc)")
       .setRequired(true)
       .addChoices(
-        { name: 'DEV', value: 'dev-protocol' },
+        { name: 'DEV', value: 'scout-protocol-token' },
         { name: 'Bitcoin (BTC)', value: 'bitcoin' },
         { name: 'Ethereum (ETH)', value: 'ethereum' }
       ))
