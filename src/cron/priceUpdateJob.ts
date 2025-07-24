@@ -11,7 +11,7 @@ let latestEthPrice: number | null = null;
 
 // Standardized token IDs - must match the IDs in createPriceAlert.ts
 const STANDARD_TOKEN_IDS = {
-  DEV: 'dev-protocol',
+  DEV: 'scout-protocol-token',
   BTC: 'bitcoin',
   ETH: 'ethereum'
 } as const;
