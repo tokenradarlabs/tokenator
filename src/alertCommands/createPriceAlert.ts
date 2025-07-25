@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import logger from "../utils/logger";
 import prisma from "../utils/prisma";
-import { getDevPrice, getBtcPrice, getEthPrice } from "../utils/uniswapPrice";
+import { getLatestTokenPriceFromDatabase } from "../utils/databasePrice";
 
 // Supported tokens and their normalized IDs
 const SUPPORTED_TOKENS = {
@@ -14,32 +14,6 @@ const SUPPORTED_TOKENS = {
 } as const;
 
 type SupportedTokenId = keyof typeof SUPPORTED_TOKENS;
-
-async function getTokenPrice(tokenId: string): Promise<number | null> {
-  const normalizedTokenId = tokenId.toLowerCase() as SupportedTokenId;
-  const standardizedId = SUPPORTED_TOKENS[normalizedTokenId];
-  
-  if (!standardizedId) {
-    logger.warn(`Unsupported token ID: ${tokenId}`);
-    return null;
-  }
-
-  try {
-    switch (standardizedId) {
-      case 'scout-protocol-token':
-        return await getDevPrice();
-      case 'bitcoin':
-        return await getBtcPrice();
-      case 'ethereum':
-        return await getEthPrice();
-      default:
-        return null;
-    }
-  } catch (error) {
-    logger.error("Error fetching token price:", error);
-    return null;
-  }
-}
 
 export const createPriceAlertCommand = new SlashCommandBuilder()
   .setName("create-price-alert")
@@ -132,13 +106,15 @@ export async function handleCreatePriceAlert(interaction: ChatInputCommandIntera
     });
 
     const directionEmoji = direction === 'up' ? '📈' : '📉';
-    const price = await getTokenPrice(tokenId);
+    const price = await getLatestTokenPriceFromDatabase(tokenId);
     
     if (price !== null) {
+      logger.info(`[CreateAlert] Using database price for ${tokenId}: $${price}`);
       await interaction.reply(`✅ Alert created! I will notify you in this channel when the price of **${tokenId}** goes ${direction} to \`$${value}\`. ${directionEmoji}, the current price is \`$${price}\` `);
     } else {
+      logger.warn(`[CreateAlert] No database price available for ${tokenId}, alert created without current price display`);
       await interaction.reply({
-        content: `Sorry, couldn't fetch the price right now. The alert has been created and will be checked when the price service is available.`,
+        content: `⚠️ Alert created successfully! I couldn't fetch the current price from the database right now, but the alert will work once price data is available.`,
         flags: 64
       });
     }
