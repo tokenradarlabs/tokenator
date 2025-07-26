@@ -23,7 +23,7 @@ export const createPriceAlertCommand = new SlashCommandBuilder()
       .setDescription("The token to create an alert for (supported: dev, eth, btc)")
       .setRequired(true)
       .addChoices(
-        { name: 'DEV', value: 'scout-protocol-token' },
+        { name: 'scout-protocol-token (DEV)', value: 'scout-protocol-token' },
         { name: 'Bitcoin (BTC)', value: 'bitcoin' },
         { name: 'Ethereum (ETH)', value: 'ethereum' }
       ))

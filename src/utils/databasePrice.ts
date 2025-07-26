@@ -62,7 +62,7 @@ export async function getLatestTokenPriceWithMetadata(tokenId: string): Promise<
     const latestPrice = await prisma.tokenPrice.findFirst({
       where: {
         token: {
-            id: standardizedId // Use 'id' or the correct field for token ID
+          address: standardizedId 
         }
       },
       orderBy: {
@@ -90,7 +90,7 @@ async function getLatestTokenPriceRecord(standardizedId: string): Promise<{ pric
         const record = await prisma.tokenPrice.findFirst({
             where: {
                 token: {
-                    id: standardizedId // Use 'id' or the correct field for token ID
+                    address: standardizedId // Use 'id' or the correct field for token ID
                 }
             },
             orderBy: {
