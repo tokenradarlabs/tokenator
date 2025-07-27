@@ -28,8 +28,8 @@ import {
   deletePriceAlertCommand,
   handleDeletePriceAlert,
 } from "./alertCommands/deletePriceAlert";
+import { disablePriceAlertCommand, handleDisablePriceAlert } from "./alertCommands/disablePriceAlert";
 
-import { getDevPrice, getBtcPrice, getEthPrice } from "./utils/uniswapPrice";
 import prisma from "./utils/prisma";
 
 const token: string | undefined = process.env.DISCORD_TOKEN;
@@ -122,6 +122,7 @@ const commandsData: ApplicationCommandDataResolvable[] = [
   listPriceAlertsCommand,
   editPriceAlertCommand,
   deletePriceAlertCommand,
+  disablePriceAlertCommand,
 ];
 
 async function createDiscordServer(): Promise<Client> {
@@ -258,6 +259,8 @@ async function handleInteractionCommands(
     await handleEditPriceAlert(interaction);
   } else if (commandName === "delete-alert") {
     await handleDeletePriceAlert(interaction);
+  } else if (commandName === "disable-alert") {
+    await handleDisablePriceAlert(interaction);
   }
 }
 
