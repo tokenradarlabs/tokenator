@@ -31,6 +31,7 @@ import {
 import { disablePriceAlertCommand, handleDisablePriceAlert } from "./alertCommands/disablePriceAlert";
 import { enablePriceAlertCommand, handleEnablePriceAlert } from "./alertCommands/enablePriceAlert";
 
+
 import prisma from "./utils/prisma";
 
 const token: string | undefined = process.env.DISCORD_TOKEN;
