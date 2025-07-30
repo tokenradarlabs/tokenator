@@ -15,29 +15,32 @@ export const listPriceAlertsCommand = new SlashCommandBuilder()
       .setName("direction")
       .setDescription("Filter by direction.")
       .setRequired(false)
-      .addChoices({ name: "Up", value: "up" }, { name: "Down", value: "down" })
+      .addChoices({ name: "Up", value: "up" }, { name: "Down", value: "down" }),
   )
   .addStringOption((option) =>
     option
       .setName("type")
-      .setDescription("Filter by alert type (currently only 'price' is supported).")
+      .setDescription(
+        "Filter by alert type (currently only 'price' is supported).",
+      )
       .setRequired(false)
-      .addChoices({ name: "Price", value: "price" })
+      .addChoices({ name: "Price", value: "price" }),
   )
   .addStringOption((option) =>
     option
       .setName("token")
       .setDescription("Filter by token address")
-      .setRequired(false)
+      .setRequired(false),
   )
   .toJSON();
 
 export async function handleListPriceAlerts(
-  interaction: ChatInputCommandInteraction
+  interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const { guildId, channelId } = interaction;
-  const direction = interaction.options.getString("direction") as PriceAlertDirection | null;
-  const type = interaction.options.getString("type");
+  const direction = interaction.options.getString(
+    "direction",
+  ) as PriceAlertDirection | null;
   const tokenAddress = interaction.options.getString("token");
 
   if (!guildId || !channelId) {
@@ -72,13 +75,14 @@ export async function handleListPriceAlerts(
         token: true,
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: "desc",
+      },
     });
 
     if (alerts.length === 0) {
       await interaction.reply({
-        content: "No price alerts found for this channel with the specified filters.",
+        content:
+          "No price alerts found for this channel with the specified filters.",
         flags: 64,
       });
       return;
@@ -91,21 +95,21 @@ export async function handleListPriceAlerts(
 
     let description = "";
     alerts.forEach((alert) => {
-        if (alert.priceAlert) {
-            const directionEmoji = alert.priceAlert.direction === 'up' ? '📈' : '📉';
-            description += `**ID:** \`${alert.id}\`\n`;
-            description += `**Token:** \`${alert.token.address}\`\n`;
-            description += `**Type:** Price\n`;
-            description += `**Direction:** ${alert.priceAlert.direction} ${directionEmoji}\n`;
-            description += `**Value:** $${alert.priceAlert.value}\n`;
-            description += `**Created At:** <t:${Math.floor(alert.createdAt.getTime() / 1000)}:R>\n\n`;
-        }
+      if (alert.priceAlert) {
+        const directionEmoji =
+          alert.priceAlert.direction === "up" ? "📈" : "📉";
+        description += `**ID:** \`${alert.id}\`\n`;
+        description += `**Token:** \`${alert.token.address}\`\n`;
+        description += `**Type:** Price\n`;
+        description += `**Direction:** ${alert.priceAlert.direction} ${directionEmoji}\n`;
+        description += `**Value:** $${alert.priceAlert.value}\n`;
+        description += `**Created At:** <t:${Math.floor(alert.createdAt.getTime() / 1000)}:R>\n\n`;
+      }
     });
 
     embed.setDescription(description);
 
     await interaction.reply({ embeds: [embed] });
-
   } catch (error) {
     logger.error("Error listing price alerts:", error);
     await interaction.reply({
@@ -113,4 +117,4 @@ export async function handleListPriceAlerts(
       flags: 64,
     });
   }
-} 
+}
