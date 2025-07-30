@@ -27,3 +27,7 @@ The bot supports the following slash commands:
   - `value` (number): The new price value to alert at (optional)
 - **`/delete-alert`**: Deletes a price alert by its ID. Takes 1 input:
   - `id` (string): The ID of the alert to delete
+- **`/enable-alert`**: Enables a price alert by its ID. Takes 1 input:
+  - `id` (string): The ID of the alert to enable
+- **`/disable-alert`**: Disables a price alert by its ID. Takes 1 input:
+  - `id` (string): The ID of the alert to disable
