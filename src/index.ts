@@ -28,9 +28,15 @@ import {
   deletePriceAlertCommand,
   handleDeletePriceAlert,
 } from "./alertCommands/deletePriceAlert";
-import { disablePriceAlertCommand, handleDisablePriceAlert } from "./alertCommands/disablePriceAlert";
-import { enablePriceAlertCommand, handleEnablePriceAlert } from "./alertCommands/enablePriceAlert";
-
+import {
+  disablePriceAlertCommand,
+  handleDisablePriceAlert,
+} from "./alertCommands/disablePriceAlert";
+import {
+  enablePriceAlertCommand,
+  handleEnablePriceAlert,
+} from "./alertCommands/enablePriceAlert";
+import { getStandardizedTokenId } from "./utils/constants";
 
 import prisma from "./utils/prisma";
 
@@ -63,10 +69,9 @@ const commandsData: ApplicationCommandDataResolvable[] = [
         .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
         .addChoices(
-          { name: 'DEV Token', value: 'scout-protocol-token' },
-          { name: 'Bitcoin', value: 'bitcoin' },
-          { name: 'ETH', value: 'eth' }
-          
+          { name: "DEV Token", value: "scout-protocol-token" },
+          { name: "Bitcoin", value: "bitcoin" },
+          { name: "Ethereum", value: "ethereum" }
         )
     )
     .toJSON(),
@@ -104,9 +109,7 @@ const commandsData: ApplicationCommandDataResolvable[] = [
     .toJSON(),
   new SlashCommandBuilder()
     .setName("total-price")
-    .setDescription(
-      "Calculates the USD price for a given amount of tokens."
-    )
+    .setDescription("Calculates the USD price for a given amount of tokens.")
     .addNumberOption((option) =>
       option
         .setName("amount")
@@ -155,26 +158,37 @@ async function handleInteractionCommands(
   } else if (commandName === "price") {
     const tokenId = interaction.options.getString("token-id", true);
     try {
+      // Get standardized token ID for database lookup
+      const standardizedTokenId = getStandardizedTokenId(tokenId);
+
+      if (!standardizedTokenId) {
+        await interaction.reply(
+          `Sorry, **${tokenId}** is not a supported token. Please use one of the available choices.`
+        );
+        return;
+      }
+
       // Get the latest price from the database
       const latestPrice = await prisma.tokenPrice.findFirst({
         where: {
           token: {
-            address: tokenId
-          }
+            address: standardizedTokenId,
+          },
         },
         orderBy: {
-          timestamp: 'desc'
+          timestamp: "desc",
         },
         include: {
-          token: true
-        }
+          token: true,
+        },
       });
 
       if (latestPrice) {
-        const formattedPrice = tokenId === "scout-protocol-token" ? 
-          latestPrice.price.toFixed(5) : 
-          latestPrice.price.toFixed(2);
-          
+        const formattedPrice =
+          standardizedTokenId === "scout-protocol-token"
+            ? latestPrice.price.toFixed(5)
+            : latestPrice.price.toFixed(2);
+
         const replyMessage = `**${tokenId}** Price: $${formattedPrice}\n`;
         await interaction.reply(replyMessage);
       } else {
@@ -274,9 +288,14 @@ async function handleInteractionCommands(
  * @param client The Discord Client instance
  */
 function initializeCronJobs(client: Client): void {
-  logger.info("Initializing cron jobs...");
-  startDevPriceUpdateJob(client);
-  logger.info("Cron jobs initialized.");
+  try {
+    logger.info("Initializing cron jobs...");
+    startDevPriceUpdateJob(client);
+    logger.info("Cron jobs initialized.");
+  } catch (error) {
+    logger.error("Error initializing cron jobs:", error);
+    // Continue without cron jobs rather than crashing
+  }
 }
 
 async function main(): Promise<void> {
