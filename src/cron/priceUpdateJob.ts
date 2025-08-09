@@ -11,70 +11,6 @@ let latestBtcPrice: number | null = null;
 let latestEthPrice: number | null = null;
 
 /**
- * Cleans up orphaned alerts for deleted Discord channels
- * @param client The Discord Client instance
- */
-async function cleanupOrphanedAlerts(client: Client) {
-  try {
-    logger.info("[CronJob-Cleanup] Starting cleanup of orphaned alerts");
-
-    const allAlerts = await prisma.alert.findMany({
-      where: { enabled: true },
-      include: { token: true },
-    });
-
-    let cleanedCount = 0;
-
-    for (const alert of allAlerts) {
-      try {
-        const channel = await client.channels.fetch(alert.channelId);
-        if (!channel) {
-          // Channel doesn't exist, delete the alert
-          await prisma.alert.delete({
-            where: { id: alert.id },
-          });
-          cleanedCount++;
-
-          logger.info(`[CronJob-Cleanup] Deleted orphaned alert for non-existent channel`, {
-            channelId: alert.channelId,
-            alertId: alert.id,
-            tokenAddress: alert.token.address,
-          });
-        }
-      } catch (error) {
-        // If we get an error fetching the channel (e.g., Unknown Channel), delete the alert
-        if (error instanceof Error && (
-          error.message.includes('Unknown Channel') ||
-          error.message.includes('Missing Access') ||
-          error.message.includes('Forbidden')
-        )) {
-          await prisma.alert.delete({
-            where: { id: alert.id },
-          });
-          cleanedCount++;
-
-          logger.info(`[CronJob-Cleanup] Deleted orphaned alert for inaccessible channel`, {
-            channelId: alert.channelId,
-            alertId: alert.id,
-            tokenAddress: alert.token.address,
-            error: error.message,
-          });
-        } else {
-          logger.error(`[CronJob-Cleanup] Error checking channel for alert`, error as Error, {
-            channelId: alert.channelId,
-            alertId: alert.id,
-          });
-        }
-      }
-    }
-
-    logger.info(`[CronJob-Cleanup] Cleanup completed. Removed ${cleanedCount} orphaned alerts`);
-  } catch (error) {
-    logger.error("[CronJob-Cleanup] Error during orphaned alert cleanup", error as Error);
-  }
-}
-
-/**
  * Updates the token price in the database
  * @param tokenAddress The standardized token identifier
  * @param price The current price of the token
@@ -244,41 +180,20 @@ async function checkPriceAlerts(
               }
             );
           } else {
-            // Channel not found - likely deleted, clean up the orphaned alert
-            await prisma.alert.delete({
-              where: { id: alert.id },
-            });
-            
-            logger.warn(`[CronJob-PriceAlert] Deleted orphaned alert for non-existent channel`, {
+            logger.error(`[CronJob-PriceAlert] Could not find channel`, {
               channelId: alert.channelId,
               alertId: alert.id,
-              tokenAddress: alert.token.address,
             });
           }
         } catch (error) {
-          // Handle specific Discord API errors for deleted channels
-          if (error instanceof Error && error.message.includes('Unknown Channel')) {
-            // Channel was deleted, clean up the orphaned alert
-            await prisma.alert.delete({
-              where: { id: alert.id },
-            });
-            
-            logger.warn(`[CronJob-PriceAlert] Deleted orphaned alert for deleted channel`, {
-              channelId: alert.channelId,
+          logger.error(
+            `[CronJob-PriceAlert] Error sending alert notification`,
+            error as Error,
+            {
               alertId: alert.id,
-              tokenAddress: alert.token.address,
-              error: error.message,
-            });
-          } else {
-            logger.error(
-              `[CronJob-PriceAlert] Error sending alert notification`,
-              error as Error,
-              {
-                alertId: alert.id,
-                channelId: alert.channelId,
-              }
-            );
-          }
+              channelId: alert.channelId,
+            }
+          );
         }
       }
     }
@@ -356,18 +271,15 @@ async function updateMarketMetrics(client: Client) {
  * Starts the price update cron job
  */
 export function startDevPriceUpdateJob(client: Client) {
-  // Run initial cleanup and market metrics update on startup
-  Promise.all([
-    cleanupOrphanedAlerts(client),
-    updateMarketMetrics(client)
-  ]).catch((error) => {
+  // Run immediately on startup
+  updateMarketMetrics(client).catch((error) => {
     logger.error(
-      `[CronJob] Error running initial startup tasks:`,
+      `[CronJob] Error running initial market metrics update:`,
       error
     );
   });
 
-  // Run market metrics update every minute
+  // Then run every minute with error handling
   try {
     cron.schedule(
       "* * * * *",
@@ -384,26 +296,6 @@ export function startDevPriceUpdateJob(client: Client) {
       }
     );
   } catch (error) {
-    logger.error("[CronJob] Error scheduling market metrics cron job:", error);
-  }
-
-  // Run cleanup of orphaned alerts every hour
-  try {
-    cron.schedule(
-      "0 * * * *", // At minute 0 of every hour
-      () => {
-        cleanupOrphanedAlerts(client).catch((error) => {
-          logger.error(
-            `[CronJob] Error running scheduled orphaned alert cleanup:`,
-            error
-          );
-        });
-      },
-      {
-        timezone: "UTC",
-      }
-    );
-  } catch (error) {
-    logger.error("[CronJob] Error scheduling cleanup cron job:", error);
+    logger.error("[CronJob] Error scheduling cron job:", error);
   }
 }
