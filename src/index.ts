@@ -1,4 +1,4 @@
-import "dotenv/config";
+import 'dotenv/config';
 import {
   Client,
   GatewayIntentBits,
@@ -8,48 +8,52 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   ApplicationCommandDataResolvable,
-} from "discord.js";
-import logger from "./utils/logger";
-import { startDevPriceUpdateJob } from "./cron/priceUpdateJob";
-import { fetchTokenPrice, formatNumber } from "./utils/coinGecko";
+} from 'discord.js';
+import logger from './utils/logger';
+import { startDevPriceUpdateJob } from './cron/priceUpdateJob';
+import { fetchTokenPrice, formatNumber } from './utils/coinGecko';
 import {
   createPriceAlertCommand,
   handleCreatePriceAlert,
-} from "./alertCommands/createPriceAlert";
+} from './alertCommands/createPriceAlert';
 import {
   listPriceAlertsCommand,
   handleListPriceAlerts,
-} from "./alertCommands/listPriceAlerts";
+} from './alertCommands/listPriceAlerts';
 import {
   editPriceAlertCommand,
   handleEditPriceAlert,
-} from "./alertCommands/editPriceAlert";
+} from './alertCommands/editPriceAlert';
 import {
   deletePriceAlertCommand,
   handleDeletePriceAlert,
-} from "./alertCommands/deletePriceAlert";
+} from './alertCommands/deletePriceAlert';
 import {
   disablePriceAlertCommand,
   handleDisablePriceAlert,
-} from "./alertCommands/disablePriceAlert";
+} from './alertCommands/disablePriceAlert';
 import {
   enablePriceAlertCommand,
   handleEnablePriceAlert,
-} from "./alertCommands/enablePriceAlert";
-import { getStandardizedTokenId } from "./utils/constants";
+} from './alertCommands/enablePriceAlert';
+import {
+  alertStatsCommand,
+  handleAlertStats,
+} from './alertCommands/alertStats';
+import { getStandardizedTokenId } from './utils/constants';
 
-import prisma from "./utils/prisma";
+import prisma from './utils/prisma';
 
 const token: string | undefined = process.env.DISCORD_TOKEN;
 
 // Check if the token is set
 if (!token) {
-  logger.error("Error: DISCORD_TOKEN is not set in the .env file.");
+  logger.error('Error: DISCORD_TOKEN is not set in the .env file.');
   logger.info(
-    "Please create a .env file in the root directory and add your bot token as DISCORD_TOKEN=your_token_here."
+    'Please create a .env file in the root directory and add your bot token as DISCORD_TOKEN=your_token_here.'
   );
   logger.info(
-    "You can also set a BOT_PREFIX in the .env file (e.g., BOT_PREFIX=?)"
+    'You can also set a BOT_PREFIX in the .env file (e.g., BOT_PREFIX=?)'
   );
   process.exit(1);
 }
@@ -57,68 +61,68 @@ if (!token) {
 // Define command data
 const commandsData: ApplicationCommandDataResolvable[] = [
   new SlashCommandBuilder()
-    .setName("ping")
-    .setDescription("Replies with Pong!")
+    .setName('ping')
+    .setDescription('Replies with Pong!')
     .toJSON(),
   new SlashCommandBuilder()
-    .setName("price")
-    .setDescription("Fetches and displays the current token price.")
-    .addStringOption((option) =>
+    .setName('price')
+    .setDescription('Fetches and displays the current token price.')
+    .addStringOption(option =>
       option
-        .setName("token-id")
+        .setName('token-id')
         .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
         .addChoices(
-          { name: "DEV Token", value: "scout-protocol-token" },
-          { name: "Bitcoin", value: "bitcoin" },
-          { name: "Ethereum", value: "ethereum" }
+          { name: 'DEV Token', value: 'scout-protocol-token' },
+          { name: 'Bitcoin', value: 'bitcoin' },
+          { name: 'Ethereum', value: 'ethereum' }
         )
     )
     .toJSON(),
   new SlashCommandBuilder()
-    .setName("mcap")
-    .setDescription("Returns the market cap of the token.")
-    .addStringOption((option) =>
+    .setName('mcap')
+    .setDescription('Returns the market cap of the token.')
+    .addStringOption(option =>
       option
-        .setName("token-id")
+        .setName('token-id')
         .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
     )
     .toJSON(),
   new SlashCommandBuilder()
-    .setName("price-change")
+    .setName('price-change')
     .setDescription(
-      "Returns the price change over the last 24 hours of the token."
+      'Returns the price change over the last 24 hours of the token.'
     )
-    .addStringOption((option) =>
+    .addStringOption(option =>
       option
-        .setName("token-id")
+        .setName('token-id')
         .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
     )
     .toJSON(),
   new SlashCommandBuilder()
-    .setName("volume")
-    .setDescription("Returns the 24h volume of the token.")
-    .addStringOption((option) =>
+    .setName('volume')
+    .setDescription('Returns the 24h volume of the token.')
+    .addStringOption(option =>
       option
-        .setName("token-id")
+        .setName('token-id')
         .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
     )
     .toJSON(),
   new SlashCommandBuilder()
-    .setName("total-price")
-    .setDescription("Calculates the USD price for a given amount of tokens.")
-    .addNumberOption((option) =>
+    .setName('total-price')
+    .setDescription('Calculates the USD price for a given amount of tokens.')
+    .addNumberOption(option =>
       option
-        .setName("amount")
-        .setDescription("The amount of tokens")
+        .setName('amount')
+        .setDescription('The amount of tokens')
         .setRequired(true)
     )
-    .addStringOption((option) =>
+    .addStringOption(option =>
       option
-        .setName("token-id")
+        .setName('token-id')
         .setDescription("The token's coingecko id (e.g. scout-protocol-token)")
         .setRequired(true)
     )
@@ -129,6 +133,7 @@ const commandsData: ApplicationCommandDataResolvable[] = [
   deletePriceAlertCommand,
   disablePriceAlertCommand,
   enablePriceAlertCommand,
+  alertStatsCommand,
 ];
 
 async function createDiscordServer(): Promise<Client> {
@@ -153,10 +158,10 @@ async function handleInteractionCommands(
 
   const { commandName } = interaction;
 
-  if (commandName === "ping") {
-    await interaction.reply("Pong!");
-  } else if (commandName === "price") {
-    const tokenId = interaction.options.getString("token-id", true);
+  if (commandName === 'ping') {
+    await interaction.reply('Pong!');
+  } else if (commandName === 'price') {
+    const tokenId = interaction.options.getString('token-id', true);
     try {
       // Get standardized token ID for database lookup
       const standardizedTokenId = getStandardizedTokenId(tokenId);
@@ -176,7 +181,7 @@ async function handleInteractionCommands(
           },
         },
         orderBy: {
-          timestamp: "desc",
+          timestamp: 'desc',
         },
         include: {
           token: true,
@@ -185,7 +190,7 @@ async function handleInteractionCommands(
 
       if (latestPrice) {
         const formattedPrice =
-          standardizedTokenId === "scout-protocol-token"
+          standardizedTokenId === 'scout-protocol-token'
             ? latestPrice.price.toFixed(5)
             : latestPrice.price.toFixed(2);
 
@@ -202,8 +207,8 @@ async function handleInteractionCommands(
         `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
       );
     }
-  } else if (commandName === "volume") {
-    const tokenId = interaction.options.getString("token-id", true);
+  } else if (commandName === 'volume') {
+    const tokenId = interaction.options.getString('token-id', true);
     const tokenData = await fetchTokenPrice(tokenId);
     if (tokenData) {
       const replyMessage = `**${tokenId}** Token 24h Volume: $${tokenData.usd_24h_vol?.toFixed(
@@ -215,12 +220,12 @@ async function handleInteractionCommands(
         `Sorry, couldn't fetch the **${tokenId}** volume right now. Please try again later.`
       );
     }
-  } else if (commandName === "price-change") {
-    const tokenId = interaction.options.getString("token-id", true);
+  } else if (commandName === 'price-change') {
+    const tokenId = interaction.options.getString('token-id', true);
     const tokenData = await fetchTokenPrice(tokenId);
     if (tokenData) {
       const change24h = tokenData.usd_24h_change;
-      const changeEmoji = change24h! >= 0 ? "📈" : "📉";
+      const changeEmoji = change24h! >= 0 ? '📈' : '📉';
       const replyMessage = `**${tokenId}** Token 24h Price Change: ${changeEmoji}${change24h?.toFixed(
         2
       )}%`;
@@ -230,10 +235,10 @@ async function handleInteractionCommands(
         `Sorry, couldn't fetch the **${tokenId}** price change right now. Please try again later.`
       );
     }
-  } else if (commandName === "mcap") {
-    const tokenId = interaction.options.getString("token-id", true);
+  } else if (commandName === 'mcap') {
+    const tokenId = interaction.options.getString('token-id', true);
     const tokenData = await fetchTokenPrice(tokenId);
-    if (tokenData && typeof tokenData.usd_market_cap === "number") {
+    if (tokenData && typeof tokenData.usd_market_cap === 'number') {
       const formattedMarketCap = formatNumber(tokenData.usd_market_cap);
       const replyMessage = `**${tokenId}** Token Market Cap: $${formattedMarketCap}`;
       await interaction.reply(replyMessage);
@@ -242,9 +247,9 @@ async function handleInteractionCommands(
         `Sorry, couldn't fetch the **${tokenId}** market cap right now. Please try again later.`
       );
     }
-  } else if (commandName === "total-price") {
-    const amount = interaction.options.getNumber("amount", true);
-    const tokenId = interaction.options.getString("token-id", true);
+  } else if (commandName === 'total-price') {
+    const amount = interaction.options.getNumber('amount', true);
+    const tokenId = interaction.options.getString('token-id', true);
     try {
       const price = await fetchTokenPrice(tokenId);
       if (price) {
@@ -268,18 +273,20 @@ async function handleInteractionCommands(
         `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
       );
     }
-  } else if (commandName === "create-price-alert") {
+  } else if (commandName === 'create-price-alert') {
     await handleCreatePriceAlert(interaction);
-  } else if (commandName === "list-alerts") {
+  } else if (commandName === 'list-alerts') {
     await handleListPriceAlerts(interaction);
-  } else if (commandName === "edit-price-alert") {
+  } else if (commandName === 'edit-price-alert') {
     await handleEditPriceAlert(interaction);
-  } else if (commandName === "delete-alert") {
+  } else if (commandName === 'delete-alert') {
     await handleDeletePriceAlert(interaction);
-  } else if (commandName === "disable-alert") {
+  } else if (commandName === 'disable-alert') {
     await handleDisablePriceAlert(interaction);
-  } else if (commandName === "enable-alert") {
+  } else if (commandName === 'enable-alert') {
     await handleEnablePriceAlert(interaction);
+  } else if (commandName === 'alert-stats') {
+    await handleAlertStats(interaction);
   }
 }
 
@@ -289,11 +296,11 @@ async function handleInteractionCommands(
  */
 function initializeCronJobs(client: Client): void {
   try {
-    logger.info("Initializing cron jobs...");
+    logger.info('Initializing cron jobs...');
     startDevPriceUpdateJob(client);
-    logger.info("Cron jobs initialized.");
+    logger.info('Cron jobs initialized.');
   } catch (error) {
-    logger.error("Error initializing cron jobs:", error);
+    logger.error('Error initializing cron jobs:', error);
     // Continue without cron jobs rather than crashing
   }
 }
@@ -303,27 +310,27 @@ async function main(): Promise<void> {
     const client = await createDiscordServer();
 
     if (!client.user) {
-      logger.error("Client user is not available after login.");
+      logger.error('Client user is not available after login.');
       process.exit(1);
     }
 
-    logger.info("Started bot successfully", { tag: client.user.tag });
+    logger.info('Started bot successfully', { tag: client.user.tag });
 
-    const rest = new REST({ version: "10" }).setToken(token!);
+    const rest = new REST({ version: '10' }).setToken(token!);
 
     try {
-      logger.info("Started refreshing application (/) commands.");
+      logger.info('Started refreshing application (/) commands.');
 
       await rest.put(Routes.applicationCommands(client.user.id), {
         body: commandsData,
       });
 
-      logger.info("Successfully reloaded application (/) commands.");
+      logger.info('Successfully reloaded application (/) commands.');
     } catch (error) {
       logger.error(error);
     }
 
-    client.on("interactionCreate", async (interaction) => {
+    client.on('interactionCreate', async interaction => {
       if (interaction.isChatInputCommand()) {
         await handleInteractionCommands(interaction);
       }
@@ -333,11 +340,11 @@ async function main(): Promise<void> {
 
     initializeCronJobs(client);
   } catch (error) {
-    logger.error("Detailed error starting bot:", error);
-    console.error("[CONSOLE] Detailed error starting bot:", error);
+    logger.error('Detailed error starting bot:', error);
+    console.error('[CONSOLE] Detailed error starting bot:', error);
     process.exit(1);
   }
 }
 
-logger.info("Bot is starting...");
+logger.info('Bot is starting...');
 main();
