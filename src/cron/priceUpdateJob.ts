@@ -4,6 +4,7 @@ import { Client, ActivityType, TextChannel } from 'discord.js';
 import prisma from '../utils/prisma';
 import { getDevPrice, getBtcPrice, getEthPrice } from '../utils/uniswapPrice';
 import { STANDARD_TOKEN_IDS } from '../utils/constants';
+import { ALERT_COOLDOWN_PERIOD_MS } from '../utils/alertUtils';
 
 // In-memory store for the latest fetched data
 let latestDevPrice: number | null = null;
@@ -125,6 +126,7 @@ async function updateTokenPrice(tokenAddress: string, price: number) {
 
 /**
  * Checks for any triggered price alerts and sends notifications.
+ * Includes race condition prevention via cooldown periods and atomic operations.
  * @param client The Discord Client instance
  * @param tokenId The token identifier
  * @param currentPrice The current price of the token
@@ -162,6 +164,12 @@ async function checkPriceAlerts(
       );
     }
 
+    // Cooldown period to prevent rapid re-triggering
+    const now = new Date();
+    const cooldownThreshold = new Date(
+      now.getTime() - ALERT_COOLDOWN_PERIOD_MS
+    );
+
     const alerts = await prisma.alert.findMany({
       where: {
         enabled: true,
@@ -169,6 +177,11 @@ async function checkPriceAlerts(
         priceAlert: {
           isNot: null,
         },
+        // Only include alerts that haven't been triggered recently or haven't been triggered at all
+        OR: [
+          { lastTriggered: null },
+          { lastTriggered: { lt: cooldownThreshold } },
+        ],
       },
       include: {
         priceAlert: true,
@@ -177,7 +190,7 @@ async function checkPriceAlerts(
     });
 
     logger.info(
-      `[CronJob-PriceAlert] Found ${alerts.length} active alerts for ${tokenId}`
+      `[CronJob-PriceAlert] Found ${alerts.length} active alerts for ${tokenId} (after cooldown filter)`
     );
 
     for (const alert of alerts) {
@@ -224,53 +237,80 @@ async function checkPriceAlerts(
 
       if (shouldTrigger) {
         try {
-          const channel = (await client.channels.fetch(
-            alert.channelId
-          )) as TextChannel;
-          if (channel) {
-            const directionEmoji = direction === 'up' ? '📈' : '📉';
-            const priceChangeMsg = previousPrice
-              ? `(Changed from $${previousPrice.price.toFixed(
-                  5
-                )} to $${currentPrice.toFixed(5)})`
-              : `(Current price: $${currentPrice.toFixed(5)})`;
+          // Atomic operation: Update lastTriggered and disable alert in a transaction
+          // This prevents race conditions by ensuring only one execution can modify the alert
+          const updatedAlert = await prisma.alert.updateMany({
+            where: {
+              id: alert.id,
+              enabled: true,
+              // Double-check cooldown to prevent race conditions
+              OR: [
+                { lastTriggered: null },
+                { lastTriggered: { lt: cooldownThreshold } },
+              ],
+            },
+            data: {
+              enabled: false,
+              lastTriggered: now,
+            },
+          });
 
-            await channel.send({
-              content: `${directionEmoji} **Price Alert!** ${
-                alert.token.address
-              } has ${
-                direction === 'up' ? 'risen above' : 'fallen below'
-              } $${value} ${priceChangeMsg}`,
-            });
+          // Only send notification if we successfully updated the alert
+          // updatedAlert.count will be 1 if update was successful, 0 if another process already updated it
+          if (updatedAlert.count > 0) {
+            const channel = (await client.channels.fetch(
+              alert.channelId
+            )) as TextChannel;
 
-            // Disable the alert after triggering
-            await prisma.alert.update({
-              where: { id: alert.id },
-              data: { enabled: false },
-            });
+            if (channel) {
+              const directionEmoji = direction === 'up' ? '📈' : '📉';
+              const priceChangeMsg = previousPrice
+                ? `(Changed from $${previousPrice.price.toFixed(
+                    5
+                  )} to $${currentPrice.toFixed(5)})`
+                : `(Current price: $${currentPrice.toFixed(5)})`;
 
-            logger.info(
-              `[CronJob-PriceAlert] Alert triggered and disabled for ${alert.token.address}`,
-              {
-                alertId: alert.id,
-                direction,
-                value,
-                currentPrice,
-                previousPrice: previousPrice?.price,
-              }
-            );
+              await channel.send({
+                content: `${directionEmoji} **Price Alert!** ${
+                  alert.token.address
+                } has ${
+                  direction === 'up' ? 'risen above' : 'fallen below'
+                } $${value} ${priceChangeMsg}`,
+              });
+
+              logger.info(
+                `[CronJob-PriceAlert] Alert triggered and disabled for ${alert.token.address}`,
+                {
+                  alertId: alert.id,
+                  direction,
+                  value,
+                  currentPrice,
+                  previousPrice: previousPrice?.price,
+                  triggeredAt: now.toISOString(),
+                }
+              );
+            } else {
+              // Channel not found - likely deleted, clean up the orphaned alert
+              await prisma.alert.delete({
+                where: { id: alert.id },
+              });
+
+              logger.warn(
+                `[CronJob-PriceAlert] Deleted orphaned alert for non-existent channel`,
+                {
+                  channelId: alert.channelId,
+                  alertId: alert.id,
+                  tokenAddress: alert.token.address,
+                }
+              );
+            }
           } else {
-            // Channel not found - likely deleted, clean up the orphaned alert
-            await prisma.alert.delete({
-              where: { id: alert.id },
-            });
-
-            logger.warn(
-              `[CronJob-PriceAlert] Deleted orphaned alert for non-existent channel`,
+            // Another process already triggered this alert
+            logger.info(
+              `[CronJob-PriceAlert] Alert already triggered by another process (race condition prevented)`,
               {
-                channelId: alert.channelId,
                 alertId: alert.id,
-                tokenAddress: alert.token.address,
+                tokenId: alert.token.address,
               }
             );
           }
@@ -278,15 +318,17 @@ async function checkPriceAlerts(
           // Handle specific Discord API errors for deleted channels
           if (
             error instanceof Error &&
-            error.message.includes('Unknown Channel')
+            (error.message.includes('Unknown Channel') ||
+              error.message.includes('Missing Access') ||
+              error.message.includes('Forbidden'))
           ) {
-            // Channel was deleted, clean up the orphaned alert
+            // Channel was deleted or is inaccessible, clean up the orphaned alert
             await prisma.alert.delete({
               where: { id: alert.id },
             });
 
             logger.warn(
-              `[CronJob-PriceAlert] Deleted orphaned alert for deleted channel`,
+              `[CronJob-PriceAlert] Deleted orphaned alert for inaccessible channel`,
               {
                 channelId: alert.channelId,
                 alertId: alert.id,
@@ -296,11 +338,12 @@ async function checkPriceAlerts(
             );
           } else {
             logger.error(
-              `[CronJob-PriceAlert] Error sending alert notification`,
+              `[CronJob-PriceAlert] Error processing alert trigger`,
               error as Error,
               {
                 alertId: alert.id,
                 channelId: alert.channelId,
+                tokenId: alert.token.address,
               }
             );
           }

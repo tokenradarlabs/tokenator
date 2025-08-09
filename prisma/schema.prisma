@@ -38,6 +38,7 @@ model Alert {
   updatedAt       DateTime      @updatedAt
   channelId       String
   enabled         Boolean       @default(true)
+  lastTriggered   DateTime?
   priceAlert      PriceAlert?   @relation("AlertToPriceAlert")
   discordServerId String
   discordServer   DiscordServer @relation(fields: [discordServerId], references: [id])

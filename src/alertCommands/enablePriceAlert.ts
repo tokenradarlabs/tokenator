@@ -2,18 +2,18 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   PermissionFlagsBits,
-} from "discord.js";
-import logger from "../utils/logger";
-import prisma from "../utils/prisma";
+} from 'discord.js';
+import logger from '../utils/logger';
+import prisma from '../utils/prisma';
 
 export const enablePriceAlertCommand = new SlashCommandBuilder()
-  .setName("enable-alert")
-  .setDescription("Enables a price alert by its ID (sets enabled to true).")
+  .setName('enable-alert')
+  .setDescription('Enables a price alert by its ID (sets enabled to true).')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
-  .addStringOption((option) =>
+  .addStringOption(option =>
     option
-      .setName("id")
-      .setDescription("The ID of the alert to enable.")
+      .setName('id')
+      .setDescription('The ID of the alert to enable.')
       .setRequired(true)
   )
   .toJSON();
@@ -21,36 +21,40 @@ export const enablePriceAlertCommand = new SlashCommandBuilder()
 export async function handleEnablePriceAlert(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  const alertId = interaction.options.getString("id", true);
+  const alertId = interaction.options.getString('id', true);
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {
     await interaction.reply({
-      content: "This command can only be used in a server channel.",
+      content: 'This command can only be used in a server channel.',
       flags: 64,
     });
     return;
   }
 
   try {
-    logger.info(`Attempting to enable alert ${alertId} from guild ${guildId} channel ${channelId}`);
+    logger.info(
+      `Attempting to enable alert ${alertId} from guild ${guildId} channel ${channelId}`
+    );
 
     // Check if the alert exists and belongs to this server/channel
-    const alert = await prisma.alert.findUnique({
-      where: {
-        id: alertId,
-        discordServerId: guildId,
-        channelId: channelId,
-      },
-    }).catch(err => {
-      logger.error('Error finding alert:', err);
-      throw err;
-    });
+    const alert = await prisma.alert
+      .findUnique({
+        where: {
+          id: alertId,
+          discordServerId: guildId,
+          channelId: channelId,
+        },
+      })
+      .catch(err => {
+        logger.error('Error finding alert:', err);
+        throw err;
+      });
 
     if (!alert) {
       logger.info(`Alert ${alertId} not found or not accessible`);
       await interaction.reply({
-        content: "Alert not found or you do not have permission to enable it.",
+        content: 'Alert not found or you do not have permission to enable it.',
         flags: 64,
       });
       return;
@@ -66,13 +70,16 @@ export async function handleEnablePriceAlert(
     }
 
     try {
-      // Set enabled to true
+      // Set enabled to true and reset lastTriggered to allow immediate triggering
       await prisma.alert.update({
         where: { id: alertId },
-        data: { enabled: true },
+        data: {
+          enabled: true,
+          lastTriggered: null,
+        },
       });
 
-      logger.info(`Successfully enabled alert ${alertId}`);
+      logger.info(`Successfully enabled alert ${alertId} and reset cooldown`);
       await interaction.reply({
         content: `Successfully enabled alert with ID: \`${alertId}\``,
         flags: 64,
@@ -82,13 +89,13 @@ export async function handleEnablePriceAlert(
       throw updateError;
     }
   } catch (error) {
-    logger.error("Error enabling price alert:", {
+    logger.error('Error enabling price alert:', {
       error,
       alertId,
       guildId,
-      channelId
+      channelId,
     });
-    let errorMessage = "Sorry, there was an error enabling the price alert.";
+    let errorMessage = 'Sorry, there was an error enabling the price alert.';
     if (error instanceof Error) {
       errorMessage += ` Error: ${error.message}`;
     }
@@ -97,4 +104,4 @@ export async function handleEnablePriceAlert(
       flags: 64,
     });
   }
-} 
+}
