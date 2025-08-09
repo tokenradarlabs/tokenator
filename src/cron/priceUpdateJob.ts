@@ -1,14 +1,94 @@
-import cron from "node-cron";
-import logger from "../utils/logger";
-import { Client, ActivityType, TextChannel } from "discord.js";
-import prisma from "../utils/prisma";
-import { getDevPrice, getBtcPrice, getEthPrice } from "../utils/uniswapPrice";
-import { STANDARD_TOKEN_IDS } from "../utils/constants";
+import cron from 'node-cron';
+import logger from '../utils/logger';
+import { Client, ActivityType, TextChannel } from 'discord.js';
+import prisma from '../utils/prisma';
+import { getDevPrice, getBtcPrice, getEthPrice } from '../utils/uniswapPrice';
+import { STANDARD_TOKEN_IDS } from '../utils/constants';
 
 // In-memory store for the latest fetched data
 let latestDevPrice: number | null = null;
 let latestBtcPrice: number | null = null;
 let latestEthPrice: number | null = null;
+
+/**
+ * Cleans up orphaned alerts for deleted Discord channels
+ * @param client The Discord Client instance
+ */
+async function cleanupOrphanedAlerts(client: Client) {
+  try {
+    logger.info('[CronJob-Cleanup] Starting cleanup of orphaned alerts');
+
+    const allAlerts = await prisma.alert.findMany({
+      where: { enabled: true },
+      include: { token: true },
+    });
+
+    let cleanedCount = 0;
+
+    for (const alert of allAlerts) {
+      try {
+        const channel = await client.channels.fetch(alert.channelId);
+        if (!channel) {
+          // Channel doesn't exist, delete the alert
+          await prisma.alert.delete({
+            where: { id: alert.id },
+          });
+          cleanedCount++;
+
+          logger.info(
+            `[CronJob-Cleanup] Deleted orphaned alert for non-existent channel`,
+            {
+              channelId: alert.channelId,
+              alertId: alert.id,
+              tokenAddress: alert.token.address,
+            }
+          );
+        }
+      } catch (error) {
+        // If we get an error fetching the channel (e.g., Unknown Channel), delete the alert
+        if (
+          error instanceof Error &&
+          (error.message.includes('Unknown Channel') ||
+            error.message.includes('Missing Access') ||
+            error.message.includes('Forbidden'))
+        ) {
+          await prisma.alert.delete({
+            where: { id: alert.id },
+          });
+          cleanedCount++;
+
+          logger.info(
+            `[CronJob-Cleanup] Deleted orphaned alert for inaccessible channel`,
+            {
+              channelId: alert.channelId,
+              alertId: alert.id,
+              tokenAddress: alert.token.address,
+              error: error.message,
+            }
+          );
+        } else {
+          logger.error(
+            `[CronJob-Cleanup] Error checking channel for alert`,
+            error as Error,
+            {
+              channelId: alert.channelId,
+              alertId: alert.id,
+            }
+          );
+        }
+      }
+    }
+
+    logger.info(
+      `[CronJob-Cleanup] Cleanup completed. Removed ${cleanedCount} orphaned alerts`
+    );
+  } catch (error) {
+    logger.error(
+      '[CronJob-Cleanup] Error during orphaned alert cleanup',
+      error as Error
+    );
+  }
+}
 
 /**
  * Updates the token price in the database
@@ -71,7 +151,7 @@ async function checkPriceAlerts(
         tokenId: token.id, // Use the token's UUID, not the address
       },
       orderBy: {
-        timestamp: "desc",
+        timestamp: 'desc',
       },
     });
 
@@ -109,7 +189,7 @@ async function checkPriceAlerts(
       // If we have a previous price, check if the price crossed the threshold
       if (previousPrice) {
         if (
-          direction === "up" &&
+          direction === 'up' &&
           previousPrice.price < value &&
           currentPrice >= value
         ) {
@@ -118,7 +198,7 @@ async function checkPriceAlerts(
             `[CronJob-PriceAlert] Triggering UP alert: ${previousPrice.price} -> ${currentPrice} (threshold: ${value})`
           );
         } else if (
-          direction === "down" &&
+          direction === 'down' &&
           previousPrice.price > value &&
           currentPrice <= value
         ) {
@@ -129,12 +209,12 @@ async function checkPriceAlerts(
         }
       } else {
         // Fallback to simple threshold check if no previous price
-        if (direction === "up" && currentPrice >= value) {
+        if (direction === 'up' && currentPrice >= value) {
           shouldTrigger = true;
           logger.info(
             `[CronJob-PriceAlert] Triggering UP alert (no previous price): ${currentPrice} >= ${value}`
           );
-        } else if (direction === "down" && currentPrice <= value) {
+        } else if (direction === 'down' && currentPrice <= value) {
           shouldTrigger = true;
           logger.info(
             `[CronJob-PriceAlert] Triggering DOWN alert (no previous price): ${currentPrice} <= ${value}`
@@ -148,7 +228,7 @@ async function checkPriceAlerts(
             alert.channelId
           )) as TextChannel;
           if (channel) {
-            const directionEmoji = direction === "up" ? "📈" : "📉";
+            const directionEmoji = direction === 'up' ? '📈' : '📉';
             const priceChangeMsg = previousPrice
               ? `(Changed from $${previousPrice.price.toFixed(
                   5
@@ -159,7 +239,7 @@ async function checkPriceAlerts(
               content: `${directionEmoji} **Price Alert!** ${
                 alert.token.address
               } has ${
-                direction === "up" ? "risen above" : "fallen below"
+                direction === 'up' ? 'risen above' : 'fallen below'
               } $${value} ${priceChangeMsg}`,
             });
 
@@ -180,20 +260,50 @@ async function checkPriceAlerts(
               }
             );
           } else {
-            logger.error(`[CronJob-PriceAlert] Could not find channel`, {
-              channelId: alert.channelId,
-              alertId: alert.id,
+            // Channel not found - likely deleted, clean up the orphaned alert
+            await prisma.alert.delete({
+              where: { id: alert.id },
             });
+
+            logger.warn(
+              `[CronJob-PriceAlert] Deleted orphaned alert for non-existent channel`,
+              {
+                channelId: alert.channelId,
+                alertId: alert.id,
+                tokenAddress: alert.token.address,
+              }
+            );
           }
         } catch (error) {
-          logger.error(
-            `[CronJob-PriceAlert] Error sending alert notification`,
-            error as Error,
-            {
-              alertId: alert.id,
-              channelId: alert.channelId,
-            }
-          );
+          // Handle specific Discord API errors for deleted channels
+          if (
+            error instanceof Error &&
+            error.message.includes('Unknown Channel')
+          ) {
+            // Channel was deleted, clean up the orphaned alert
+            await prisma.alert.delete({
+              where: { id: alert.id },
+            });
+
+            logger.warn(
+              `[CronJob-PriceAlert] Deleted orphaned alert for deleted channel`,
+              {
+                channelId: alert.channelId,
+                alertId: alert.id,
+                tokenAddress: alert.token.address,
+                error: error.message,
+              }
+            );
+          } else {
+            logger.error(
+              `[CronJob-PriceAlert] Error sending alert notification`,
+              error as Error,
+              {
+                alertId: alert.id,
+                channelId: alert.channelId,
+              }
+            );
+          }
         }
       }
     }
@@ -271,20 +381,20 @@ async function updateMarketMetrics(client: Client) {
  * Starts the price update cron job
  */
 export function startDevPriceUpdateJob(client: Client) {
-  // Run immediately on startup
-  updateMarketMetrics(client).catch((error) => {
-    logger.error(
-      `[CronJob] Error running initial market metrics update:`,
-      error
-    );
+  // Run initial cleanup and market metrics update on startup
+  Promise.all([
+    cleanupOrphanedAlerts(client),
+    updateMarketMetrics(client),
+  ]).catch(error => {
+    logger.error(`[CronJob] Error running initial startup tasks:`, error);
   });
 
-  // Then run every minute with error handling
+  // Run market metrics update every minute
   try {
     cron.schedule(
-      "* * * * *",
+      '* * * * *',
       () => {
-        updateMarketMetrics(client).catch((error) => {
+        updateMarketMetrics(client).catch(error => {
           logger.error(
             `[CronJob] Error running scheduled market metrics update:`,
             error
@@ -292,10 +402,30 @@ export function startDevPriceUpdateJob(client: Client) {
         });
       },
       {
-        timezone: "UTC",
+        timezone: 'UTC',
       }
     );
   } catch (error) {
-    logger.error("[CronJob] Error scheduling cron job:", error);
+    logger.error('[CronJob] Error scheduling market metrics cron job:', error);
+  }
+
+  // Run cleanup of orphaned alerts every hour
+  try {
+    cron.schedule(
+      '0 * * * *', // At minute 0 of every hour
+      () => {
+        cleanupOrphanedAlerts(client).catch(error => {
+          logger.error(
+            `[CronJob] Error running scheduled orphaned alert cleanup:`,
+            error
+          );
+        });
+      },
+      {
+        timezone: 'UTC',
+      }
+    );
+  } catch (error) {
+    logger.error('[CronJob] Error scheduling cleanup cron job:', error);
   }
 }
