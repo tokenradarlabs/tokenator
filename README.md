@@ -18,10 +18,18 @@
     ```bash
     npm install
     ```
-3.  Create a `.env` file in the root and add your environment variables:
-    ```env
-    DISCORD_TOKEN=YOUR_DISCORD_BOT_TOKEN
+3.  Copy the example environment file and fill in the values:
+    ```bash
+    cp .env.example .env
     ```
+    Required variables:
+    - `DISCORD_TOKEN`
+    - `COINGECKO_API_KEY`
+    - `ANKR_API_KEY`
+    - `DATABASE_URL`
+
+    Optional variables:
+    - `NODE_ENV` (defaults to `development`)
 
 ## Development
 
