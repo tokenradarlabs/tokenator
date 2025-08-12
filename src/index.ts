@@ -11,7 +11,12 @@ import {
 } from 'discord.js';
 import logger from './utils/logger';
 import { startDevPriceUpdateJob } from './cron/priceUpdateJob';
-import { fetchTokenPrice, formatNumber } from './utils/coinGecko';
+import {
+  fetchTokenPrice,
+  formatNumber,
+  fetchTokenPriceDetailed,
+  buildFriendlyCoinGeckoError,
+} from './utils/coinGecko';
 import {
   createPriceAlertCommand,
   handleCreatePriceAlert,
@@ -204,47 +209,47 @@ async function handleInteractionCommands(
     } catch (error) {
       logger.error(`Error fetching **${tokenId}** price`, error);
       await interaction.reply(
-        `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
+        `Sorry, an unexpected error occurred fetching **${tokenId}** price.`
       );
     }
   } else if (commandName === 'volume') {
     const tokenId = interaction.options.getString('token-id', true);
-    const tokenData = await fetchTokenPrice(tokenId);
-    if (tokenData) {
-      const replyMessage = `**${tokenId}** Token 24h Volume: $${tokenData.usd_24h_vol?.toFixed(
-        2
-      )}`;
+    const result = await fetchTokenPriceDetailed(tokenId);
+    if (result.ok) {
+      const vol = result.data.usd_24h_vol ?? 0;
+      const replyMessage = `**${tokenId}** Token 24h Volume: $${vol.toFixed(2)}`;
       await interaction.reply(replyMessage);
     } else {
-      await interaction.reply(
-        `Sorry, couldn't fetch the **${tokenId}** volume right now. Please try again later.`
-      );
+      const friendly = buildFriendlyCoinGeckoError(tokenId, result);
+      await interaction.reply(friendly);
     }
   } else if (commandName === 'price-change') {
     const tokenId = interaction.options.getString('token-id', true);
-    const tokenData = await fetchTokenPrice(tokenId);
-    if (tokenData) {
-      const change24h = tokenData.usd_24h_change;
-      const changeEmoji = change24h! >= 0 ? '📈' : '📉';
-      const replyMessage = `**${tokenId}** Token 24h Price Change: ${changeEmoji}${change24h?.toFixed(
+    const result = await fetchTokenPriceDetailed(tokenId);
+    if (result.ok) {
+      const change24h = result.data.usd_24h_change ?? 0;
+      const changeEmoji = change24h >= 0 ? '📈' : '📉';
+      const replyMessage = `**${tokenId}** Token 24h Price Change: ${changeEmoji}${change24h.toFixed(
         2
       )}%`;
       await interaction.reply(replyMessage);
     } else {
-      await interaction.reply(
-        `Sorry, couldn't fetch the **${tokenId}** price change right now. Please try again later.`
-      );
+      const friendly = buildFriendlyCoinGeckoError(tokenId, result);
+      await interaction.reply(friendly);
     }
   } else if (commandName === 'mcap') {
     const tokenId = interaction.options.getString('token-id', true);
-    const tokenData = await fetchTokenPrice(tokenId);
-    if (tokenData && typeof tokenData.usd_market_cap === 'number') {
-      const formattedMarketCap = formatNumber(tokenData.usd_market_cap);
+    const result = await fetchTokenPriceDetailed(tokenId);
+    if (result.ok && typeof result.data.usd_market_cap === 'number') {
+      const formattedMarketCap = formatNumber(result.data.usd_market_cap);
       const replyMessage = `**${tokenId}** Token Market Cap: $${formattedMarketCap}`;
       await interaction.reply(replyMessage);
+    } else if (!result.ok) {
+      const friendly = buildFriendlyCoinGeckoError(tokenId, result);
+      await interaction.reply(friendly);
     } else {
       await interaction.reply(
-        `Sorry, couldn't fetch the **${tokenId}** market cap right now. Please try again later.`
+        `Market cap data not available for **${tokenId}** at the moment.`
       );
     }
   } else if (commandName === 'total-price') {
@@ -270,7 +275,7 @@ async function handleInteractionCommands(
         error
       );
       await interaction.reply(
-        `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
+        `Sorry, an unexpected error occurred fetching **${tokenId}** price.`
       );
     }
   } else if (commandName === 'create-price-alert') {
