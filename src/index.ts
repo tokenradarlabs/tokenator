@@ -12,11 +12,11 @@ import {
 import logger from './utils/logger';
 import { startDevPriceUpdateJob } from './cron/priceUpdateJob';
 import {
-  fetchTokenPrice,
   formatNumber,
   fetchTokenPriceDetailed,
   buildFriendlyCoinGeckoError,
 } from './utils/coinGecko';
+import { getLatestTokenPriceFromDatabase } from './utils/databasePrice';
 import {
   createPriceAlertCommand,
   handleCreatePriceAlert,
@@ -47,7 +47,6 @@ import {
 } from './alertCommands/alertStats';
 import { getStandardizedTokenId } from './utils/constants';
 
-import prisma from './utils/prisma';
 
 const token: string | undefined = process.env.DISCORD_TOKEN;
 
@@ -178,26 +177,14 @@ async function handleInteractionCommands(
         return;
       }
 
-      // Get the latest price from the database
-      const latestPrice = await prisma.tokenPrice.findFirst({
-        where: {
-          token: {
-            address: standardizedTokenId,
-          },
-        },
-        orderBy: {
-          timestamp: 'desc',
-        },
-        include: {
-          token: true,
-        },
-      });
+      // Get the latest price from the database using the utility function
+      const latestPrice = await getLatestTokenPriceFromDatabase(standardizedTokenId);
 
       if (latestPrice) {
         const formattedPrice =
           standardizedTokenId === 'scout-protocol-token'
-            ? latestPrice.price.toFixed(5)
-            : latestPrice.price.toFixed(2);
+            ? latestPrice.toFixed(5)
+            : latestPrice.toFixed(2);
 
         const replyMessage = `**${tokenId}** Price: $${formattedPrice}\n`;
         await interaction.reply(replyMessage);
@@ -256,9 +243,21 @@ async function handleInteractionCommands(
     const amount = interaction.options.getNumber('amount', true);
     const tokenId = interaction.options.getString('token-id', true);
     try {
-      const price = await fetchTokenPrice(tokenId);
+      // Get standardized token ID for database lookup
+      const standardizedTokenId = getStandardizedTokenId(tokenId);
+
+      if (!standardizedTokenId) {
+        await interaction.reply(
+          `Sorry, **${tokenId}** is not a supported token. Please use one of the available choices.`
+        );
+        return;
+      }
+
+      // Get price from database
+      const price = await getLatestTokenPriceFromDatabase(standardizedTokenId);
+
       if (price) {
-        const totalUsdPrice = amount * price.usd;
+        const totalUsdPrice = amount * price;
         const roundedUpPrice = Math.round(totalUsdPrice * 1000) / 1000;
         const replyMessage = `**${amount} ${tokenId}** tokens are currently worth: $${roundedUpPrice.toFixed(
           3
@@ -266,7 +265,7 @@ async function handleInteractionCommands(
         await interaction.reply(replyMessage);
       } else {
         await interaction.reply(
-          `Sorry, couldn't fetch the **${tokenId}** price right now. Please try again later.`
+          `Sorry, couldn't find any price data for **${tokenId}**. Please try again later.`
         );
       }
     } catch (error) {
