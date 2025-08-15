@@ -39,7 +39,7 @@ export async function handleDeletePriceAlert(
     return;
   }
 
-  // Check if at least one option is provided
+  
   if (!alertId && deleteDisabled === null) {
     await interaction.reply({
       content: "Please provide either an alert ID or use the delete-disabled option.",
@@ -48,13 +48,13 @@ export async function handleDeletePriceAlert(
     return;
   }
 
-  // Handle deleting all disabled alerts
+  // bulk
   if (deleteDisabled === true) {
     await handleDeleteDisabledAlerts(interaction, guildId, channelId);
     return;
   }
 
-  // Handle deleting a specific alert by ID
+  // specific
   if (alertId) {
     await handleDeleteSpecificAlert(interaction, alertId, guildId, channelId);
     return;
@@ -69,7 +69,7 @@ async function handleDeleteDisabledAlerts(
   try {
     logger.info(`Attempting to delete all disabled alerts from guild ${guildId} channel ${channelId}`);
 
-    // Find all disabled alerts in this channel
+    
     const disabledAlerts = await prisma.alert.findMany({
       where: {
         discordServerId: guildId,
@@ -94,11 +94,11 @@ async function handleDeleteDisabledAlerts(
 
     logger.info(`Found ${disabledAlerts.length} disabled alerts to delete`);
 
-    // Delete all disabled alerts
+    
     let deletedCount = 0;
     for (const alert of disabledAlerts) {
       try {
-        // Delete the PriceAlert first if it exists
+        
         if (alert.priceAlert) {
           await prisma.priceAlert.delete({
             where: {
@@ -107,7 +107,7 @@ async function handleDeleteDisabledAlerts(
           });
         }
 
-        // Then delete the Alert
+        
         await prisma.alert.delete({
           where: {
             id: alert.id,
@@ -117,7 +117,7 @@ async function handleDeleteDisabledAlerts(
         deletedCount++;
       } catch (deleteError) {
         logger.error(`Error deleting disabled alert ${alert.id}:`, deleteError);
-        // Continue with other alerts even if one fails
+        
       }
     }
 
@@ -154,7 +154,7 @@ async function handleDeleteSpecificAlert(
   try {
     logger.info(`Attempting to delete alert ${alertId} from guild ${guildId} channel ${channelId}`);
 
-    // First check if the alert exists and belongs to this server/channel
+    // alert ownership check
     const alert = await prisma.alert.findUnique({
       where: {
         id: alertId,
@@ -181,7 +181,7 @@ async function handleDeleteSpecificAlert(
     logger.info(`Found alert ${alertId}, has priceAlert: ${!!alert.priceAlert}`);
 
     try {
-      // Delete the PriceAlert first if it exists
+      
       if (alert.priceAlert) {
         logger.info(`Deleting PriceAlert for alert ${alertId}`);
         await prisma.priceAlert.delete({
@@ -191,7 +191,7 @@ async function handleDeleteSpecificAlert(
         });
       }
 
-      // Then delete the Alert
+      
       logger.info(`Deleting Alert ${alertId}`);
       await prisma.alert.delete({
         where: {

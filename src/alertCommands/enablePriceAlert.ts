@@ -39,7 +39,7 @@ export async function handleEnablePriceAlert(
     return;
   }
 
-  // Check if at least one option is provided
+  
   if (!alertId && enableAll === null) {
     await interaction.reply({
       content: 'Please provide either an alert ID or use the enable-all option.',
@@ -48,13 +48,13 @@ export async function handleEnablePriceAlert(
     return;
   }
 
-  // Handle enabling all disabled alerts
+  // bulk
   if (enableAll === true) {
     await handleEnableAllDisabledAlerts(interaction, guildId, channelId);
     return;
   }
 
-  // Handle enabling a specific alert by ID
+  // specific
   if (alertId) {
     await handleEnableSpecificAlert(interaction, alertId, guildId, channelId);
     return;
@@ -69,7 +69,7 @@ async function handleEnableAllDisabledAlerts(
   try {
     logger.info(`Attempting to enable all disabled alerts from guild ${guildId} channel ${channelId}`);
 
-    // Find all disabled alerts in this channel
+    
     const disabledAlerts = await prisma.alert.findMany({
       where: {
         discordServerId: guildId,
@@ -91,7 +91,7 @@ async function handleEnableAllDisabledAlerts(
 
     logger.info(`Found ${disabledAlerts.length} disabled alerts to enable`);
 
-    // Enable all disabled alerts
+    
     let enabledCount = 0;
     for (const alert of disabledAlerts) {
       try {
@@ -105,7 +105,7 @@ async function handleEnableAllDisabledAlerts(
         enabledCount++;
       } catch (updateError) {
         logger.error(`Error enabling alert ${alert.id}:`, updateError);
-        // Continue with other alerts even if one fails
+        
       }
     }
 
@@ -144,7 +144,7 @@ async function handleEnableSpecificAlert(
       `Attempting to enable alert ${alertId} from guild ${guildId} channel ${channelId}`
     );
 
-    // Check if the alert exists and belongs to this server/channel
+    // alert ownership check
     const alert = await prisma.alert
       .findUnique({
         where: {
@@ -177,7 +177,7 @@ async function handleEnableSpecificAlert(
     }
 
     try {
-      // Set enabled to true and reset lastTriggered to allow immediate triggering
+      
       await prisma.alert.update({
         where: { id: alertId },
         data: {

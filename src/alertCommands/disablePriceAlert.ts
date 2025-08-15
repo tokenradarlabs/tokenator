@@ -39,7 +39,7 @@ export async function handleDisablePriceAlert(
     return;
   }
 
-  // Check if at least one option is provided
+  
   if (!alertId && disableAll === null) {
     await interaction.reply({
       content: "Please provide either an alert ID or use the disable-all option.",
@@ -48,13 +48,13 @@ export async function handleDisablePriceAlert(
     return;
   }
 
-  // Handle disabling all enabled alerts
+  // bulk
   if (disableAll === true) {
     await handleDisableAllEnabledAlerts(interaction, guildId, channelId);
     return;
   }
 
-  // Handle disabling a specific alert by ID
+  // specific
   if (alertId) {
     await handleDisableSpecificAlert(interaction, alertId, guildId, channelId);
     return;
@@ -69,7 +69,7 @@ async function handleDisableAllEnabledAlerts(
   try {
     logger.info(`Attempting to disable all enabled alerts from guild ${guildId} channel ${channelId}`);
 
-    // Find all enabled alerts in this channel
+    
     const enabledAlerts = await prisma.alert.findMany({
       where: {
         discordServerId: guildId,
@@ -91,7 +91,7 @@ async function handleDisableAllEnabledAlerts(
 
     logger.info(`Found ${enabledAlerts.length} enabled alerts to disable`);
 
-    // Disable all enabled alerts
+    
     let disabledCount = 0;
     for (const alert of enabledAlerts) {
       try {
@@ -102,7 +102,7 @@ async function handleDisableAllEnabledAlerts(
         disabledCount++;
       } catch (updateError) {
         logger.error(`Error disabling alert ${alert.id}:`, updateError);
-        // Continue with other alerts even if one fails
+        
       }
     }
 
@@ -139,7 +139,7 @@ async function handleDisableSpecificAlert(
   try {
     logger.info(`Attempting to disable alert ${alertId} from guild ${guildId} channel ${channelId}`);
 
-    // Check if the alert exists and belongs to this server/channel
+    // alert ownership check
     const alert = await prisma.alert.findUnique({
       where: {
         id: alertId,
@@ -161,7 +161,7 @@ async function handleDisableSpecificAlert(
     }
 
     try {
-      // Set enabled to false
+      
       await prisma.alert.update({
         where: { id: alertId },
         data: { enabled: false },
