@@ -144,9 +144,8 @@ async function handleEnableSpecificAlert(
       `Attempting to enable alert ${alertId} from guild ${guildId} channel ${channelId}`
     );
 
-    // alert ownership check
     const alert = await prisma.alert
-      .findUnique({
+      .findFirst({
         where: {
           id: alertId,
           discordServerId: guildId,

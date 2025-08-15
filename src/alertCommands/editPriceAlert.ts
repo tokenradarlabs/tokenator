@@ -60,7 +60,7 @@ export async function handleEditPriceAlert(
   }
 
   try {
-    const alert = await prisma.alert.findUnique({
+    const alert = await prisma.alert.findFirst({
       where: {
         id: alertId,
         discordServerId: guildId,
