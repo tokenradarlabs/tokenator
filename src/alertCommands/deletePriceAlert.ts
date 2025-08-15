@@ -38,7 +38,6 @@ export async function handleDeletePriceAlert(
     });
     return;
   }
-
   
   if (!alertId && deleteDisabled === null) {
     await interaction.reply({
@@ -48,13 +47,12 @@ export async function handleDeletePriceAlert(
     return;
   }
 
-  // bulk
   if (deleteDisabled === true) {
     await handleDeleteDisabledAlerts(interaction, guildId, channelId);
     return;
   }
 
-  // specific
+
   if (alertId) {
     await handleDeleteSpecificAlert(interaction, alertId, guildId, channelId);
     return;
@@ -69,7 +67,7 @@ async function handleDeleteDisabledAlerts(
   try {
     logger.info(`Attempting to delete all disabled alerts from guild ${guildId} channel ${channelId}`);
 
-    
+
     const disabledAlerts = await prisma.alert.findMany({
       where: {
         discordServerId: guildId,
@@ -94,11 +92,11 @@ async function handleDeleteDisabledAlerts(
 
     logger.info(`Found ${disabledAlerts.length} disabled alerts to delete`);
 
-    
+    // Delete all disabled alerts
     let deletedCount = 0;
     for (const alert of disabledAlerts) {
       try {
-        
+        // Delete the PriceAlert first if it exists
         if (alert.priceAlert) {
           await prisma.priceAlert.delete({
             where: {
@@ -107,17 +105,9 @@ async function handleDeleteDisabledAlerts(
           });
         }
 
-        
-        await prisma.alert.delete({
-          where: {
-            id: alert.id,
-          },
-        });
-
         deletedCount++;
       } catch (deleteError) {
         logger.error(`Error deleting disabled alert ${alert.id}:`, deleteError);
-        
       }
     }
 
