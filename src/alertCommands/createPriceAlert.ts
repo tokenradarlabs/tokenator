@@ -9,6 +9,7 @@ import {
   getStandardizedTokenId,
 } from '../utils/constants';
 import { validatePriceAlertValue } from '../utils/priceValidation';
+import { formatPriceForDisplay } from '../utils/priceFormatter';
 
 export const createPriceAlertCommand = new SlashCommandBuilder()
   .setName('create-price-alert')
@@ -133,9 +134,9 @@ export async function handleCreatePriceAlert(
       (await getLatestTokenPriceFromDatabase(tokenId));
 
     if (price !== null) {
-      logger.info(`[CreateAlert] Using price for ${tokenId}: $${price}`);
+      logger.info(`[CreateAlert] Using price for ${tokenId}: ${formatPriceForDisplay(price)}`);
       await interaction.reply(
-        `✅ Alert created! I will notify you in this channel when the price of **${tokenId}** goes ${direction} to \`$${value}\`. ${directionEmoji} Current price: \`$${price}\``
+        `✅ Alert created! I will notify you in this channel when the price of **${tokenId}** goes ${direction} to \`${formatPriceForDisplay(value)}\`. ${directionEmoji} Current price: \`${formatPriceForDisplay(price)}\``
       );
     } else {
       logger.warn(

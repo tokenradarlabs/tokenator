@@ -6,6 +6,7 @@ import {
 import logger from "../utils/logger";
 import prisma from "../utils/prisma";
 import { PriceAlertDirection } from "../generated/prisma/client";
+import { formatPriceForDisplay } from "../utils/priceFormatter";
 
 export const listPriceAlertsCommand = new SlashCommandBuilder()
   .setName("list-alerts")
@@ -117,7 +118,7 @@ export async function handleListPriceAlerts(
         description += `**Token:** \`${alert.token.address}\`\n`;
         description += `**Type:** Price\n`;
         description += `**Direction:** ${alert.priceAlert.direction} ${directionEmoji}\n`;
-        description += `**Value:** $${alert.priceAlert.value}\n`;
+        description += `**Value:** ${formatPriceForDisplay(alert.priceAlert.value)}\n`;
         description += `**Status:** ${enabledText} ${enabledEmoji}\n`;
         description += `**Created At:** <t:${Math.floor(alert.createdAt.getTime() / 1000)}:R>\n\n`;
       }

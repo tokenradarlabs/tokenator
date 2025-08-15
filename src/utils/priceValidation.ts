@@ -2,6 +2,7 @@ import logger from './logger';
 import { getLatestTokenPriceFromDatabase } from './databasePrice';
 import { fetchTokenPrice } from './coinGecko';
 import { getStandardizedTokenId } from './constants';
+import { formatPrice } from './priceFormatter';
 
 // Define reasonable price bounds for each token type
 const TOKEN_PRICE_BOUNDS = {
@@ -151,23 +152,6 @@ export async function validatePriceAlertValue(
     isValid: true,
     currentPrice: currentPrice || undefined,
   };
-}
-
-/**
- * Formats price for display with appropriate decimal places
- * @param price The price to format
- * @returns Formatted price string
- */
-function formatPrice(price: number): string {
-  if (price < 0.01) {
-    return price.toFixed(6);
-  } else if (price < 1) {
-    return price.toFixed(4);
-  } else if (price < 100) {
-    return price.toFixed(2);
-  } else {
-    return price.toLocaleString();
-  }
 }
 
 /**

@@ -139,8 +139,7 @@ async function handleDisableSpecificAlert(
   try {
     logger.info(`Attempting to disable alert ${alertId} from guild ${guildId} channel ${channelId}`);
 
-    // alert ownership check
-    const alert = await prisma.alert.findUnique({
+    const alert = await prisma.alert.findFirst({
       where: {
         id: alertId,
         discordServerId: guildId,
@@ -155,6 +154,15 @@ async function handleDisableSpecificAlert(
       logger.info(`Alert ${alertId} not found or not accessible`);
       await interaction.reply({
         content: "Alert not found or you do not have permission to disable it.",
+        flags: 64,
+      });
+      return;
+    }
+
+    if (!alert.enabled) {
+      logger.info(`Alert ${alertId} is already disabled.`);
+      await interaction.reply({
+        content: `Alert with ID: \`${alertId}\` is already disabled.`,
         flags: 64,
       });
       return;
