@@ -5,6 +5,7 @@ import prisma from '../utils/prisma';
 import { getDevPrice, getBtcPrice, getEthPrice } from '../utils/uniswapPrice';
 import { STANDARD_TOKEN_IDS } from '../utils/constants';
 import { ALERT_COOLDOWN_PERIOD_MS } from '../utils/alertUtils';
+import { formatPriceForDisplay, formatPriceForAlert } from '../utils/priceFormatter';
 
 // In-memory store for the latest fetched data
 let latestDevPrice: number | null = null;
@@ -119,7 +120,7 @@ async function checkPriceAlertsWithTransaction(
     // Log the price change
     if (previousPrice) {
       logger.info(
-        `[CronJob-PriceAlert] Price change for ${tokenId}: $${previousPrice.price} -> $${currentPrice}`
+        `[CronJob-PriceAlert] Price change for ${tokenId}: ${formatPriceForDisplay(previousPrice.price)} -> ${formatPriceForDisplay(currentPrice)}`
       );
     }
 
@@ -167,7 +168,7 @@ async function checkPriceAlertsWithTransaction(
         ) {
           shouldTrigger = true;
           logger.info(
-            `[CronJob-PriceAlert] Triggering UP alert: ${previousPrice.price} -> ${currentPrice} (threshold: ${value})`
+            `[CronJob-PriceAlert] Triggering UP alert: ${formatPriceForDisplay(previousPrice.price)} -> ${formatPriceForDisplay(currentPrice)} (threshold: ${formatPriceForDisplay(value)})`
           );
         } else if (
           direction === 'down' &&
@@ -176,7 +177,7 @@ async function checkPriceAlertsWithTransaction(
         ) {
           shouldTrigger = true;
           logger.info(
-            `[CronJob-PriceAlert] Triggering DOWN alert: ${previousPrice.price} -> ${currentPrice} (threshold: ${value})`
+            `[CronJob-PriceAlert] Triggering DOWN alert: ${formatPriceForDisplay(previousPrice.price)} -> ${formatPriceForDisplay(currentPrice)} (threshold: ${formatPriceForDisplay(value)})`
           );
         }
       } else {
@@ -184,12 +185,12 @@ async function checkPriceAlertsWithTransaction(
         if (direction === 'up' && currentPrice >= value) {
           shouldTrigger = true;
           logger.info(
-            `[CronJob-PriceAlert] Triggering UP alert (no previous price): ${currentPrice} >= ${value}`
+            `[CronJob-PriceAlert] Triggering UP alert (no previous price): ${formatPriceForDisplay(currentPrice)} >= ${formatPriceForDisplay(value)}`
           );
         } else if (direction === 'down' && currentPrice <= value) {
           shouldTrigger = true;
           logger.info(
-            `[CronJob-PriceAlert] Triggering DOWN alert (no previous price): ${currentPrice} <= ${value}`
+            `[CronJob-PriceAlert] Triggering DOWN alert (no previous price): ${formatPriceForDisplay(currentPrice)} <= ${formatPriceForDisplay(value)}`
           );
         }
       }
@@ -226,10 +227,10 @@ async function checkPriceAlertsWithTransaction(
                   await textChannel.send(
                     `${directionEmoji} **Price Alert Triggered!**\n\n` +
                       `**Token:** ${alert.token.address}\n` +
-                      `**Direction:** ${direction.toUpperCase(),directionEmoji}\n` +
-                      `**Threshold:** $${value}\n` +
-                      `**Current Price:** $${currentPrice}\n` +
-                      `**Previous Price:** ${previousPrice ? `$${previousPrice.price}` : 'N/A'}\n\n` +
+                      `**Direction:** ${direction.toUpperCase()} ${directionEmoji}\n` +
+                      `**Threshold:** ${formatPriceForDisplay(value)}\n` +
+                      `**Current Price:** ${formatPriceForDisplay(currentPrice)}\n` +
+                      `**Previous Price:** ${previousPrice ? formatPriceForDisplay(previousPrice.price) : 'N/A'}\n\n` +
                       `This alert has been automatically disabled.`
                   );
 
@@ -425,7 +426,7 @@ async function updateMarketMetrics(client: Client) {
 
     // Update bot status with latest price
     if (latestDevPrice !== null) {
-      client.user?.setActivity(`DEV: $${latestDevPrice.toFixed(5)}`, {
+      client.user?.setActivity(`DEV: ${formatPriceForDisplay(latestDevPrice)}`, {
         type: ActivityType.Watching,
       });
     }

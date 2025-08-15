@@ -17,6 +17,7 @@ import {
   buildFriendlyCoinGeckoError,
 } from './utils/coinGecko';
 import { getLatestTokenPriceFromDatabase } from './utils/databasePrice';
+import { formatPriceForDisplay } from './utils/priceFormatter';
 import {
   createPriceAlertCommand,
   handleCreatePriceAlert,
@@ -181,12 +182,7 @@ async function handleInteractionCommands(
       const latestPrice = await getLatestTokenPriceFromDatabase(standardizedTokenId);
 
       if (latestPrice) {
-        const formattedPrice =
-          standardizedTokenId === 'scout-protocol-token'
-            ? latestPrice.toFixed(5)
-            : latestPrice.toFixed(2);
-
-        const replyMessage = `**${tokenId}** Price: $${formattedPrice}\n`;
+        const replyMessage = `**${tokenId}** Price: ${formatPriceForDisplay(latestPrice)}\n`;
         await interaction.reply(replyMessage);
       } else {
         await interaction.reply(
@@ -258,10 +254,7 @@ async function handleInteractionCommands(
 
       if (price) {
         const totalUsdPrice = amount * price;
-        const roundedUpPrice = Math.round(totalUsdPrice * 1000) / 1000;
-        const replyMessage = `**${amount} ${tokenId}** tokens are currently worth: $${roundedUpPrice.toFixed(
-          3
-        )}`;
+        const replyMessage = `**${amount} ${tokenId}** tokens are currently worth: ${formatPriceForDisplay(totalUsdPrice)}`;
         await interaction.reply(replyMessage);
       } else {
         await interaction.reply(
