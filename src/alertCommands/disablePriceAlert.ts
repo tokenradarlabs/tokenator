@@ -160,6 +160,15 @@ async function handleDisableSpecificAlert(
       return;
     }
 
+    if (!alert.enabled) {
+      logger.info(`Alert ${alertId} is already disabled.`);
+      await interaction.reply({
+        content: `Alert with ID: \`${alertId}\` is already disabled.`,
+        flags: 64,
+      });
+      return;
+    }
+
     try {
       
       await prisma.alert.update({
