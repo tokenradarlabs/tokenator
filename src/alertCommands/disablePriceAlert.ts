@@ -139,8 +139,7 @@ async function handleDisableSpecificAlert(
   try {
     logger.info(`Attempting to disable alert ${alertId} from guild ${guildId} channel ${channelId}`);
 
-    // alert ownership check
-    const alert = await prisma.alert.findUnique({
+    const alert = await prisma.alert.findFirst({
       where: {
         id: alertId,
         discordServerId: guildId,
