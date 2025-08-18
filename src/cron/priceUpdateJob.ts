@@ -5,7 +5,7 @@ import prisma from '../utils/prisma';
 import { getDevPrice, getBtcPrice, getEthPrice } from '../utils/uniswapPrice';
 import { STANDARD_TOKEN_IDS } from '../utils/constants';
 import { ALERT_COOLDOWN_PERIOD_MS } from '../utils/alertUtils';
-import { formatPriceForDisplay, formatPriceForAlert } from '../utils/priceFormatter';
+import { formatPriceForDisplay } from '../utils/priceFormatter';
 
 // In-memory store for the latest fetched data
 let latestDevPrice: number | null = null;

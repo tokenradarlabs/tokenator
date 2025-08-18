@@ -28,7 +28,6 @@ All price formatting is handled by the centralized utility functions in `src/uti
 
 - `formatPrice(price: number)`: Returns formatted price without currency symbol
 - `formatPriceForDisplay(price: number)`: Returns formatted price with $ prefix
-- `formatPriceForAlert(price: number)`: Alias for formatPrice for clarity in alerts
 
 ### Files Updated
 
