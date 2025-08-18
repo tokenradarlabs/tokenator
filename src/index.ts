@@ -9,6 +9,7 @@ import {
   ChatInputCommandInteraction,
   ApplicationCommandDataResolvable,
 } from 'discord.js';
+import { config } from './config';
 import logger from './utils/logger';
 import { startDevPriceUpdateJob } from './cron/priceUpdateJob';
 import {
@@ -49,19 +50,9 @@ import {
 import { getStandardizedTokenId } from './utils/constants';
 
 
-const token: string | undefined = process.env.DISCORD_TOKEN;
+const token: string = config.DISCORD_TOKEN;
 
-// Check if the token is set
-if (!token) {
-  logger.error('Error: DISCORD_TOKEN is not set in the .env file.');
-  logger.info(
-    'Please create a .env file in the root directory and add your bot token as DISCORD_TOKEN=your_token_here.'
-  );
-  logger.info(
-    'You can also set a BOT_PREFIX in the .env file (e.g., BOT_PREFIX=?)'
-  );
-  process.exit(1);
-}
+// Token is now guaranteed to be available due to config validation
 
 // Define command data
 const commandsData: ApplicationCommandDataResolvable[] = [
@@ -152,7 +143,7 @@ async function createDiscordServer(): Promise<Client> {
     partials: [Partials.Channel, Partials.Message],
   });
 
-  await client.login(token!);
+  await client.login(token);
   return client;
 }
 
@@ -313,7 +304,7 @@ async function main(): Promise<void> {
 
     logger.info('Started bot successfully', { tag: client.user.tag });
 
-    const rest = new REST({ version: '10' }).setToken(token!);
+    const rest = new REST({ version: '10' }).setToken(token);
 
     try {
       logger.info('Started refreshing application (/) commands.');

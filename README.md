@@ -31,8 +31,18 @@
     Optional variables:
     - `NODE_ENV` (defaults to `development`)
 
+4.  Test your configuration:
+    ```bash
+    npm run test:config
+    ```
+    This will validate your environment variables and show you any missing or invalid values.
+
 ## Development
 
+- Test configuration:
+  ```bash
+  npm run test:config
+  ```
 - Compile TypeScript:
   ```bash
   npm run build
@@ -45,6 +55,20 @@
   ```bash
   npm run dev
   ```
+
+## Configuration
+
+The bot uses a centralized configuration system with environment validation:
+
+- **Environment validation**: All required environment variables are validated at startup using Zod schema validation
+- **Type safety**: Configuration is fully typed for better development experience  
+- **Fail fast**: The bot will exit with clear error messages if required variables are missing
+- **Centralized access**: All environment variables are accessed through the `config` object instead of `process.env`
+
+To test your configuration without starting the full bot, run:
+```bash
+npm run test:config
+```
 
 
 ## Basic Test
