@@ -1,4 +1,5 @@
 import logger from './logger';
+import { config } from '../config';
 import 'dotenv/config';
 
 // Utility to format numbers for display (e.g., 1.2K, 1.2M)
@@ -23,12 +24,7 @@ interface CoinGeckoPriceResponse {
   [tokenId: string]: CoinGeckoPriceDetail;
 }
 
-const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
-
-if (!COINGECKO_API_KEY) {
-    logger.error('[CoinGecko] COINGECKO_API_KEY is not set in environment variables');
-    throw new Error('COINGECKO_API_KEY is required but not set in environment variables');
-}
+const COINGECKO_API_KEY = config.COINGECKO_API_KEY;
 
 export type CoinGeckoErrorType =
   | 'network_error'

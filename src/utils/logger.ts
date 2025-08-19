@@ -1,10 +1,11 @@
 import pino from "pino";
+import { isDevelopment } from "../config";
 
-const { NODE_ENV, BETTERSTACK_TOKEN, PINO_LOG_LEVEL } = process.env;
+const { BETTERSTACK_TOKEN, PINO_LOG_LEVEL } = process.env;
 
 let transport;
 
-if (NODE_ENV === "development") {
+if (isDevelopment()) {
   transport = pino.transport({
     target: "pino-pretty",
     options: {
@@ -35,7 +36,7 @@ if (NODE_ENV === "development") {
 
 const logger = pino(
   {
-    level: PINO_LOG_LEVEL || (NODE_ENV === "development" ? "debug" : "info"),
+    level: PINO_LOG_LEVEL || (isDevelopment() ? "debug" : "info"),
     formatters: {
       level: (label) => {
         return { level: label.toUpperCase() };
