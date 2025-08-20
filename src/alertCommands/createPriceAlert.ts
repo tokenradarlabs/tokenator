@@ -1,15 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import logger from '../utils/logger';
-import prisma from '../utils/prisma';
-import { getLatestTokenPriceFromDatabase } from '../utils/databasePrice';
-import {
-  SUPPORTED_TOKENS,
-  SupportedTokenId,
-  isSupportedToken,
-  getStandardizedTokenId,
-} from '../utils/constants';
-import { validatePriceAlertValue } from '../utils/priceValidation';
-import { formatPriceForDisplay } from '../utils/priceFormatter';
+import { createPriceAlert } from '../lib/alertcommands';
 
 export const createPriceAlertCommand = new SlashCommandBuilder()
   .setName('create-price-alert')
@@ -68,90 +59,28 @@ export async function handleCreatePriceAlert(
     return;
   }
 
-  if (!isSupportedToken(tokenId)) {
-    await interaction.reply({
-      content: 'Unsupported token. Please use one of: DEV, BTC, or ETH.',
-      flags: 64,
-    });
-    return;
-  }
-
-  // Validate the price alert value
-  const validationResult = await validatePriceAlertValue(
-    tokenId,
-    value,
-    direction
-  );
-  if (!validationResult.isValid) {
-    await interaction.reply({
-      content: `❌ **Invalid price value**: ${validationResult.errorMessage}`,
-      flags: 64,
-    });
-    return;
-  }
-
   try {
-    await prisma.$transaction(async prisma => {
-      // Ensure server exists and is up to date
-      const server = await prisma.discordServer.upsert({
-        where: { id: guildId },
-        update: { name: interaction.guild?.name },
-        create: { id: guildId, name: interaction.guild?.name },
-      });
-
-      // Ensure token exists with standardized ID
-      const standardizedId = getStandardizedTokenId(tokenId);
-      if (!standardizedId) {
-        throw new Error(`Unsupported token: ${tokenId}`);
-      }
-
-      const token = await prisma.token.upsert({
-        where: { address: standardizedId },
-        update: {},
-        create: { address: standardizedId },
-      });
-
-      // Create the Alert with nested PriceAlert creation
-      await prisma.alert.create({
-        data: {
-          channelId: channelId,
-          enabled: true,
-          discordServerId: server.id,
-          tokenId: token.id,
-          priceAlert: {
-            create: {
-              direction: direction,
-              value: value,
-            },
-          },
-        },
-      });
+    const result = await createPriceAlert({
+      tokenId,
+      direction,
+      value,
+      guildId,
+      channelId,
+      guildName: interaction.guild?.name,
     });
 
-    const directionEmoji = direction === 'up' ? '📈' : '📉';
-    const price =
-      validationResult.currentPrice ||
-      (await getLatestTokenPriceFromDatabase(tokenId));
-
-    if (price !== null) {
-      logger.info(`[CreateAlert] Using price for ${tokenId}: ${formatPriceForDisplay(price)}`);
-      await interaction.reply(
-        `✅ Alert created! I will notify you in this channel when the price of **${tokenId}** goes ${direction} to \`${formatPriceForDisplay(value)}\`. ${directionEmoji} Current price: \`${formatPriceForDisplay(price)}\``
-      );
+    if (result.success) {
+      await interaction.reply(result.message);
     } else {
-      logger.warn(
-        `[CreateAlert] No price available for ${tokenId}, alert created without current price display`
-      );
       await interaction.reply({
-        content: `✅ Alert created successfully! I couldn't fetch the current price right now, but the alert will work once price data is available.`,
+        content: result.message,
         flags: 64,
       });
     }
   } catch (error) {
-    logger.error('Error creating price alert:', error);
+    logger.error('Error in handleCreatePriceAlert:', error);
     await interaction.reply({
-      content:
-        'Sorry, there was an error creating the price alert. Please try again later.',
+      content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
     });
   }
