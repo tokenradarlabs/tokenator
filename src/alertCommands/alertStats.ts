@@ -5,8 +5,8 @@ import {
   EmbedBuilder,
 } from 'discord.js';
 import logger from '../utils/logger';
-import { getAlertCooldownStats } from '../utils/alertUtils';
 import { STANDARD_TOKEN_IDS } from '../utils/constants';
+import { getAlertStats, formatAlertStatsMessage } from '../lib/alertcommands';
 
 export const alertStatsCommand = new SlashCommandBuilder()
   .setName('alert-stats')
@@ -42,55 +42,28 @@ export async function handleAlertStats(
   }
 
   try {
-    logger.info(
-      `Getting alert stats for guild ${guildId}, token: ${tokenId || 'all'}`
-    );
+    const result = await getAlertStats({
+      tokenId,
+      guildId,
+      channelId,
+    });
 
-    const stats = await getAlertCooldownStats(tokenId);
+    if (!result.success || !result.stats) {
+      await interaction.reply({
+        content: result.message || 'Sorry, there was an error retrieving alert statistics.',
+        flags: 64,
+      });
+      return;
+    }
 
-    // Create an embed with the statistics
+    // Create an embed with the statistics using the formatted message
+    const formattedMessage = formatAlertStatsMessage(result.stats, tokenId);
+    
     const embed = new EmbedBuilder()
       .setTitle(`🔔 Price Alert Statistics ${tokenId ? `(${tokenId})` : ''}`)
       .setColor(0x00ae86)
+      .setDescription(formattedMessage)
       .setTimestamp();
-
-    // Add fields to the embed
-    embed.addFields(
-      {
-        name: '📊 Overview',
-        value: [
-          `**Total Alerts:** ${stats.totalAlerts}`,
-          `**Enabled Alerts:** ${stats.enabledAlerts}`,
-          `**Alerts in Cooldown:** ${stats.alertsInCooldown}`,
-          `**Available Alerts:** ${stats.alertsAvailable}`,
-        ].join('\n'),
-        inline: true,
-      },
-      {
-        name: '⏰ Cooldown Info',
-        value: [
-          `**Cooldown Period:** ${Math.round(stats.cooldownPeriodMs / 1000)}s`,
-          `**Purpose:** Prevents spam`,
-          `**Resets:** When re-enabled`,
-        ].join('\n'),
-        inline: true,
-      }
-    );
-
-    // Add status message
-    let statusMessage = '✅ All systems normal';
-    if (stats.alertsInCooldown > 0) {
-      statusMessage = `⏳ ${stats.alertsInCooldown} alert(s) cooling down`;
-    }
-    if (stats.alertsAvailable === 0 && stats.enabledAlerts > 0) {
-      statusMessage = '🛑 All enabled alerts are in cooldown';
-    }
-
-    embed.addFields({
-      name: '🚦 Status',
-      value: statusMessage,
-      inline: false,
-    });
 
     await interaction.reply({
       embeds: [embed],
@@ -99,15 +72,9 @@ export async function handleAlertStats(
 
     logger.info(`Successfully displayed alert stats for guild ${guildId}`);
   } catch (error) {
-    logger.error('Error getting alert stats:', {
-      error,
-      tokenId,
-      guildId,
-      channelId,
-    });
-
+    logger.error('Error in handleAlertStats:', error);
     await interaction.reply({
-      content: 'Sorry, there was an error retrieving alert statistics.',
+      content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
     });
   }
