@@ -4,7 +4,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import logger from "../utils/logger";
-import prisma from "../utils/prisma";
+import { deletePriceAlert } from "../lib/alertcommands";
 
 export const deletePriceAlertCommand = new SlashCommandBuilder()
   .setName("delete-alert")
@@ -38,180 +38,23 @@ export async function handleDeletePriceAlert(
     });
     return;
   }
-  
-  if (!alertId && deleteDisabled === null) {
-    await interaction.reply({
-      content: "Please provide either an alert ID or use the delete-disabled option.",
-      flags: 64,
-    });
-    return;
-  }
 
-  if (deleteDisabled === true) {
-    await handleDeleteDisabledAlerts(interaction, guildId, channelId);
-    return;
-  }
-
-
-  if (alertId) {
-    await handleDeleteSpecificAlert(interaction, alertId, guildId, channelId);
-    return;
-  }
-}
-
-async function handleDeleteDisabledAlerts(
-  interaction: ChatInputCommandInteraction,
-  guildId: string,
-  channelId: string
-): Promise<void> {
   try {
-    logger.info(`Attempting to delete all disabled alerts from guild ${guildId} channel ${channelId}`);
-
-
-    const disabledAlerts = await prisma.alert.findMany({
-      where: {
-        discordServerId: guildId,
-        channelId: channelId,
-        enabled: false,
-        priceAlert: {
-          isNot: null,
-        },
-      },
-      include: {
-        priceAlert: true,
-      },
-    });
-
-    if (disabledAlerts.length === 0) {
-      await interaction.reply({
-        content: "No disabled alerts found in this channel.",
-        flags: 64,
-      });
-      return;
-    }
-
-    logger.info(`Found ${disabledAlerts.length} disabled alerts to delete`);
-
-    // Delete all disabled alerts
-    let deletedCount = 0;
-    for (const alert of disabledAlerts) {
-      try {
-        // Delete the PriceAlert first if it exists
-        if (alert.priceAlert) {
-          await prisma.priceAlert.delete({
-            where: {
-              alertId: alert.id,
-            },
-          });
-        }
-
-        deletedCount++;
-      } catch (deleteError) {
-        logger.error(`Error deleting disabled alert ${alert.id}:`, deleteError);
-      }
-    }
-
-    logger.info(`Successfully deleted ${deletedCount} disabled alerts`);
-    await interaction.reply({
-      content: `Successfully deleted ${deletedCount} disabled alerts from this channel.`,
-      flags: 64,
-    });
-  } catch (error) {
-    logger.error("Error deleting disabled alerts:", {
-      error,
+    const result = await deletePriceAlert({
+      alertId: alertId || undefined,
+      deleteDisabled: deleteDisabled || undefined,
       guildId,
       channelId,
     });
 
-    let errorMessage = "Sorry, there was an error deleting the disabled alerts.";
-    if (error instanceof Error) {
-      errorMessage += ` Error: ${error.message}`;
-    }
-
     await interaction.reply({
-      content: errorMessage,
+      content: result.message,
       flags: 64,
     });
-  }
-}
-
-async function handleDeleteSpecificAlert(
-  interaction: ChatInputCommandInteraction,
-  alertId: string,
-  guildId: string,
-  channelId: string
-): Promise<void> {
-  try {
-    logger.info(`Attempting to delete alert ${alertId} from guild ${guildId} channel ${channelId}`);
-
-    const alert = await prisma.alert.findFirst({
-      where: {
-        id: alertId,
-        discordServerId: guildId,
-        channelId: channelId,
-      },
-      include: {
-        priceAlert: true
-      }
-    }).catch(err => {
-      logger.error('Error finding alert:', err);
-      throw err;
-    });
-
-    if (!alert) {
-      logger.info(`Alert ${alertId} not found or not accessible`);
-      await interaction.reply({
-        content: "Alert not found or you do not have permission to delete it.",
-        flags: 64,
-      });
-      return;
-    }
-
-    logger.info(`Found alert ${alertId}, has priceAlert: ${!!alert.priceAlert}`);
-
-    try {
-      
-      if (alert.priceAlert) {
-        logger.info(`Deleting PriceAlert for alert ${alertId}`);
-        await prisma.priceAlert.delete({
-          where: {
-            alertId: alertId
-          }
-        });
-      }
-
-      
-      logger.info(`Deleting Alert ${alertId}`);
-      await prisma.alert.delete({
-        where: {
-          id: alertId
-        }
-      });
-
-      logger.info(`Successfully deleted alert ${alertId}`);
-      await interaction.reply({
-        content: `Successfully deleted alert with ID: \`${alertId}\``,
-        flags: 64,
-      });
-    } catch (deleteError) {
-      logger.error('Error during delete operation:', deleteError);
-      throw deleteError;
-    }
   } catch (error) {
-    logger.error("Error deleting price alert:", {
-      error,
-      alertId,
-      guildId,
-      channelId
-    });
-    
-    let errorMessage = "Sorry, there was an error deleting the price alert.";
-    if (error instanceof Error) {
-      errorMessage += ` Error: ${error.message}`;
-    }
-    
+    logger.error('Error in handleDeletePriceAlert:', error);
     await interaction.reply({
-      content: errorMessage,
+      content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
     });
   }
