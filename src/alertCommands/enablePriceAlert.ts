@@ -4,7 +4,7 @@ import {
   PermissionFlagsBits,
 } from 'discord.js';
 import logger from '../utils/logger';
-import prisma from '../utils/prisma';
+import { enablePriceAlert } from '../lib/alertcommands';
 
 export const enablePriceAlertCommand = new SlashCommandBuilder()
   .setName('enable-alert')
@@ -39,174 +39,22 @@ export async function handleEnablePriceAlert(
     return;
   }
 
-  
-  if (!alertId && enableAll === null) {
-    await interaction.reply({
-      content: 'Please provide either an alert ID or use the enable-all option.',
-      flags: 64,
-    });
-    return;
-  }
-
-  // bulk
-  if (enableAll === true) {
-    await handleEnableAllDisabledAlerts(interaction, guildId, channelId);
-    return;
-  }
-
-  // specific
-  if (alertId) {
-    await handleEnableSpecificAlert(interaction, alertId, guildId, channelId);
-    return;
-  }
-}
-
-async function handleEnableAllDisabledAlerts(
-  interaction: ChatInputCommandInteraction,
-  guildId: string,
-  channelId: string
-): Promise<void> {
   try {
-    logger.info(`Attempting to enable all disabled alerts from guild ${guildId} channel ${channelId}`);
-
-    
-    const disabledAlerts = await prisma.alert.findMany({
-      where: {
-        discordServerId: guildId,
-        channelId: channelId,
-        enabled: false,
-        priceAlert: {
-          isNot: null,
-        },
-      },
-    });
-
-    if (disabledAlerts.length === 0) {
-      await interaction.reply({
-        content: 'No disabled alerts found in this channel.',
-        flags: 64,
-      });
-      return;
-    }
-
-    logger.info(`Found ${disabledAlerts.length} disabled alerts to enable`);
-
-    
-    let enabledCount = 0;
-    for (const alert of disabledAlerts) {
-      try {
-        await prisma.alert.update({
-          where: { id: alert.id },
-          data: {
-            enabled: true,
-            lastTriggered: null,
-          },
-        });
-        enabledCount++;
-      } catch (updateError) {
-        logger.error(`Error enabling alert ${alert.id}:`, updateError);
-        
-      }
-    }
-
-    logger.info(`Successfully enabled ${enabledCount} alerts`);
-    await interaction.reply({
-      content: `Successfully enabled ${enabledCount} alerts in this channel.`,
-      flags: 64,
-    });
-  } catch (error) {
-    logger.error('Error enabling all disabled alerts:', {
-      error,
+    const result = await enablePriceAlert({
+      alertId: alertId || undefined,
+      enableAll: enableAll || undefined,
       guildId,
       channelId,
     });
 
-    let errorMessage = 'Sorry, there was an error enabling the alerts.';
-    if (error instanceof Error) {
-      errorMessage += ` Error: ${error.message}`;
-    }
-
     await interaction.reply({
-      content: errorMessage,
+      content: result.message,
       flags: 64,
     });
-  }
-}
-
-async function handleEnableSpecificAlert(
-  interaction: ChatInputCommandInteraction,
-  alertId: string,
-  guildId: string,
-  channelId: string
-): Promise<void> {
-  try {
-    logger.info(
-      `Attempting to enable alert ${alertId} from guild ${guildId} channel ${channelId}`
-    );
-
-    const alert = await prisma.alert
-      .findFirst({
-        where: {
-          id: alertId,
-          discordServerId: guildId,
-          channelId: channelId,
-        },
-      })
-      .catch(err => {
-        logger.error('Error finding alert:', err);
-        throw err;
-      });
-
-    if (!alert) {
-      logger.info(`Alert ${alertId} not found or not accessible`);
-      await interaction.reply({
-        content: 'Alert not found or you do not have permission to enable it.',
-        flags: 64,
-      });
-      return;
-    }
-
-    if (alert.enabled) {
-      logger.info(`Alert ${alertId} is already enabled.`);
-      await interaction.reply({
-        content: `Alert with ID: \`${alertId}\` is already enabled.`,
-        flags: 64,
-      });
-      return;
-    }
-
-    try {
-      
-      await prisma.alert.update({
-        where: { id: alertId },
-        data: {
-          enabled: true,
-          lastTriggered: null,
-        },
-      });
-
-      logger.info(`Successfully enabled alert ${alertId} and reset cooldown`);
-      await interaction.reply({
-        content: `Successfully enabled alert with ID: \`${alertId}\``,
-        flags: 64,
-      });
-    } catch (updateError) {
-      logger.error('Error during enable operation:', updateError);
-      throw updateError;
-    }
   } catch (error) {
-    logger.error('Error enabling price alert:', {
-      error,
-      alertId,
-      guildId,
-      channelId,
-    });
-    let errorMessage = 'Sorry, there was an error enabling the price alert.';
-    if (error instanceof Error) {
-      errorMessage += ` Error: ${error.message}`;
-    }
+    logger.error('Error in handleEnablePriceAlert:', error);
     await interaction.reply({
-      content: errorMessage,
+      content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
     });
   }
