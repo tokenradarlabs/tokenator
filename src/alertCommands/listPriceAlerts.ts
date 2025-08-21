@@ -4,9 +4,8 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import logger from "../utils/logger";
-import prisma from "../utils/prisma";
 import { PriceAlertDirection } from "../generated/prisma/client";
-import { formatPriceForDisplay } from "../utils/priceFormatter";
+import { listPriceAlerts, formatAlertsForDisplay } from "../lib/alertcommands";
 
 export const listPriceAlertsCommand = new SlashCommandBuilder()
   .setName("list-alerts")
@@ -61,41 +60,25 @@ export async function handleListPriceAlerts(
   }
 
   try {
-    const whereClause: any = {
-      discordServerId: guildId,
-      channelId: channelId,
-      priceAlert: {
-        isNot: null,
-      },
-    };
-
-    if (direction) {
-      whereClause.priceAlert = { direction: direction };
-    }
-
-    if (tokenAddress) {
-      whereClause.token = { address: tokenAddress };
-    }
-
-    if (enabledStatus !== null) {
-      whereClause.enabled = enabledStatus === "true";
-    }
-
-    const alerts = await prisma.alert.findMany({
-      where: whereClause,
-      include: {
-        priceAlert: true,
-        token: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    const result = await listPriceAlerts({
+      guildId,
+      channelId,
+      direction: direction || undefined,
+      tokenAddress: tokenAddress || undefined,
+      enabledStatus: enabledStatus || undefined,
     });
 
-    if (alerts.length === 0) {
+    if (!result.success) {
       await interaction.reply({
-        content:
-          "No price alerts found for this channel with the specified filters.",
+        content: result.message || "Sorry, there was an error listing the price alerts.",
+        flags: 64,
+      });
+      return;
+    }
+
+    if (!result.alerts || result.alerts.length === 0) {
+      await interaction.reply({
+        content: result.message || "No price alerts found for this channel with the specified filters.",
         flags: 64,
       });
       return;
@@ -106,31 +89,14 @@ export async function handleListPriceAlerts(
       .setColor(0x0099ff)
       .setTimestamp();
 
-    let description = "";
-    alerts.forEach((alert) => {
-      if (alert.priceAlert) {
-        const directionEmoji =
-          alert.priceAlert.direction === "up" ? "📈" : "📉";
-        const enabledEmoji = alert.enabled ? "✅" : "❌";
-        const enabledText = alert.enabled ? "Enabled" : "Disabled";
-        
-        description += `**ID:** \`${alert.id}\`\n`;
-        description += `**Token:** \`${alert.token.address}\`\n`;
-        description += `**Type:** Price\n`;
-        description += `**Direction:** ${alert.priceAlert.direction} ${directionEmoji}\n`;
-        description += `**Value:** ${formatPriceForDisplay(alert.priceAlert.value)}\n`;
-        description += `**Status:** ${enabledText} ${enabledEmoji}\n`;
-        description += `**Created At:** <t:${Math.floor(alert.createdAt.getTime() / 1000)}:R>\n\n`;
-      }
-    });
-
+    const description = formatAlertsForDisplay(result.alerts);
     embed.setDescription(description);
 
     await interaction.reply({ embeds: [embed] });
   } catch (error) {
-    logger.error("Error listing price alerts:", error);
+    logger.error('Error in handleListPriceAlerts:', error);
     await interaction.reply({
-      content: "Sorry, there was an error listing the price alerts.",
+      content: "Sorry, there was an unexpected error. Please try again later.",
       flags: 64,
     });
   }
