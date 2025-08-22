@@ -48,7 +48,6 @@ export async function editPriceAlert(
       };
     }
 
-    // Validate new price value if provided
     if (newValue !== null && newValue !== undefined) {
       const directionToValidate = newDirection || alert.priceAlert.direction;
       const tokenAddress = alert.token.address;
@@ -66,7 +65,6 @@ export async function editPriceAlert(
       }
     }
 
-    // Validate direction change if provided (ensure it makes sense with existing/new price)
     if (newDirection && (newValue === null || newValue === undefined)) {
       const tokenAddress = alert.token.address;
       const currentValue = alert.priceAlert.value;

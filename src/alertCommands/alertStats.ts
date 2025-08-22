@@ -56,7 +56,6 @@ export async function handleAlertStats(
       return;
     }
 
-    // Create an embed with the statistics using the formatted message
     const formattedMessage = formatAlertStatsMessage(result.stats, tokenId);
     
     const embed = new EmbedBuilder()
