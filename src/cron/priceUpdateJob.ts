@@ -7,6 +7,9 @@ import { STANDARD_TOKEN_IDS } from '../utils/constants';
 import { ALERT_COOLDOWN_PERIOD_MS } from '../utils/alertUtils';
 import { formatPriceForDisplay } from '../utils/priceFormatter';
 
+let latestDevPrice: number | null = null;
+
+
 async function cleanupOrphanedAlerts(client: Client) {
   try {
     logger.info('[CronJob-Cleanup] Starting cleanup of orphaned alerts');
