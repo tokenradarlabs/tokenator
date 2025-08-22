@@ -19,6 +19,7 @@ model Token {
   address     String  @unique
   alerts      Alert[]
   prices      TokenPrice[]
+  volumes     TokenVolume[]
 }
 
 model DiscordServer {
@@ -32,6 +33,11 @@ enum PriceAlertDirection {
   down
 }
 
+enum VolumeAlertDirection {
+  up
+  down
+}
+
 model Alert {
   id              String        @id @default(uuid())
   createdAt       DateTime      @default(now())
@@ -40,6 +46,7 @@ model Alert {
   enabled         Boolean       @default(true)
   lastTriggered   DateTime?
   priceAlert      PriceAlert?   @relation("AlertToPriceAlert")
+  volumeAlert     VolumeAlert?  @relation("AlertToVolumeAlert")
   discordServerId String
   discordServer   DiscordServer @relation(fields: [discordServerId], references: [id])
   tokenId         String
@@ -54,9 +61,28 @@ model PriceAlert {
   alert     Alert               @relation("AlertToPriceAlert", fields: [alertId], references: [id])
 }
 
+model VolumeAlert {
+  id        String               @id @default(uuid())
+  direction VolumeAlertDirection
+  value     Float
+  alertId   String               @unique
+  alert     Alert                @relation("AlertToVolumeAlert", fields: [alertId], references: [id])
+}
+
 model TokenPrice {
   id        String   @id @default(uuid())
   price     Float
+  timestamp DateTime @default(now())
+  tokenId   String
+  token     Token    @relation(fields: [tokenId], references: [id])
+
+  @@index([timestamp])
+  @@index([tokenId])
+}
+
+model TokenVolume {
+  id        String   @id @default(uuid())
+  volume    Float
   timestamp DateTime @default(now())
   tokenId   String
   token     Token    @relation(fields: [tokenId], references: [id])
