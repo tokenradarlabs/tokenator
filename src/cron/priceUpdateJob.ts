@@ -7,13 +7,8 @@ import { STANDARD_TOKEN_IDS } from '../utils/constants';
 import { ALERT_COOLDOWN_PERIOD_MS } from '../utils/alertUtils';
 import { formatPriceForDisplay } from '../utils/priceFormatter';
 
-// In-memory store for the latest fetched data
 let latestDevPrice: number | null = null;
 
-/**
- * Cleans up orphaned alerts for deleted Discord channels
- * @param client The Discord Client instance
- */
 async function cleanupOrphanedAlerts(client: Client) {
   try {
     logger.info('[CronJob-Cleanup] Starting cleanup of orphaned alerts');
@@ -29,7 +24,6 @@ async function cleanupOrphanedAlerts(client: Client) {
       try {
         const channel = await client.channels.fetch(alert.channelId);
         if (!channel) {
-          // Channel doesn't exist, delete the alert
           await prisma.alert.delete({
             where: { id: alert.id },
           });
@@ -45,7 +39,6 @@ async function cleanupOrphanedAlerts(client: Client) {
           );
         }
       } catch (error) {
-        // If we get an error fetching the channel (e.g., Unknown Channel), delete the alert
         if (
           error instanceof Error &&
           (error.message.includes('Unknown Channel') ||
@@ -90,15 +83,6 @@ async function cleanupOrphanedAlerts(client: Client) {
   }
 }
 
-/**
- * Transaction-aware version of checkPriceAlerts that works within a database transaction.
- * This ensures alert checking happens atomically with price updates.
- * @param tx The Prisma transaction context
- * @param client The Discord Client instance
- * @param tokenId The token identifier
- * @param currentPrice The current price of the token
- * @param previousPrice The previous price from before the update
- */
 async function checkPriceAlertsWithTransaction(
   tx: any,
   client: Client,
@@ -107,7 +91,6 @@ async function checkPriceAlertsWithTransaction(
   previousPrice: any
 ) {
   try {
-    // First get the token record within the transaction
     const token = await tx.token.findUnique({
       where: { address: tokenId },
     });
@@ -117,14 +100,12 @@ async function checkPriceAlertsWithTransaction(
       return;
     }
 
-    // Log the price change
     if (previousPrice) {
       logger.info(
         `[CronJob-PriceAlert] Price change for ${tokenId}: ${formatPriceForDisplay(previousPrice.price)} -> ${formatPriceForDisplay(currentPrice)}`
       );
     }
 
-    // Cooldown period to prevent rapid re-triggering
     const now = new Date();
     const cooldownThreshold = new Date(
       now.getTime() - ALERT_COOLDOWN_PERIOD_MS
@@ -137,7 +118,6 @@ async function checkPriceAlertsWithTransaction(
         priceAlert: {
           isNot: null,
         },
-        // Only include alerts that haven't been triggered recently or haven't been triggered at all
         OR: [
           { lastTriggered: null },
           { lastTriggered: { lt: cooldownThreshold } },
@@ -159,7 +139,6 @@ async function checkPriceAlertsWithTransaction(
       const { direction, value } = alert.priceAlert;
       let shouldTrigger = false;
 
-      // If we have a previous price, check if the price crossed the threshold
       if (previousPrice) {
         if (
           direction === 'up' &&
@@ -181,7 +160,6 @@ async function checkPriceAlertsWithTransaction(
           );
         }
       } else {
-        // Fallback to simple threshold check if no previous price
         if (direction === 'up' && currentPrice >= value) {
           shouldTrigger = true;
           logger.info(
@@ -197,12 +175,10 @@ async function checkPriceAlertsWithTransaction(
 
       if (shouldTrigger) {
         try {
-          // Atomic operation: Update lastTriggered and disable alert within the transaction
           const updatedAlert = await tx.alert.updateMany({
             where: {
               id: alert.id,
               enabled: true,
-              // Double-check cooldown to prevent race conditions
               OR: [
                 { lastTriggered: null },
                 { lastTriggered: { lt: cooldownThreshold } },
@@ -214,10 +190,7 @@ async function checkPriceAlertsWithTransaction(
             },
           });
 
-          // Only send notification if we successfully updated the alert
           if (updatedAlert.count > 0) {
-            // Send Discord notification (this happens outside the transaction but after the alert is marked as triggered)
-            // We'll queue this for after the transaction commits
             setImmediate(async () => {
               try {
                 const channel = await client.channels.fetch(alert.channelId);
@@ -264,7 +237,6 @@ async function checkPriceAlertsWithTransaction(
               }
             );
           } else {
-            // Another process already triggered this alert
             logger.info(
               `[CronJob-PriceAlert] Alert already triggered by another process (race condition prevented)`,
               {
@@ -282,7 +254,6 @@ async function checkPriceAlertsWithTransaction(
               tokenId: alert.token.address,
             }
           );
-          // Re-throw to ensure transaction rolls back
           throw error;
         }
       }
@@ -296,22 +267,16 @@ async function checkPriceAlertsWithTransaction(
         currentPrice,
       }
     );
-    // Re-throw to ensure transaction rolls back
     throw error;
   }
 }
 
-/**
- * Updates market metrics and checks all token alerts
- */
 async function updateMarketMetrics(client: Client) {
   try {
-    // Update DEV price from Uniswap
     try {
       const devPrice = await getDevPrice();
       latestDevPrice = devPrice;
       
-      // Get the previous price before updating
       const previousPrice = await prisma.tokenPrice.findFirst({
         where: {
           token: { address: STANDARD_TOKEN_IDS.DEV },
@@ -321,9 +286,7 @@ async function updateMarketMetrics(client: Client) {
         },
       });
 
-      // Wrap price update and alert checking in a single transaction
       await prisma.$transaction(async (tx) => {
-        // Update token price within transaction
         const token = await tx.token.upsert({
           where: { address: STANDARD_TOKEN_IDS.DEV },
           update: {},
@@ -337,7 +300,6 @@ async function updateMarketMetrics(client: Client) {
           },
         });
 
-        // Check price alerts within the same transaction, passing the previous price
         await checkPriceAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.DEV, devPrice, previousPrice);
       });
       
@@ -346,11 +308,9 @@ async function updateMarketMetrics(client: Client) {
       logger.error(`[CronJob-MarketMetrics] Error updating DEV price:`, error);
     }
 
-    // Update BTC price from Uniswap
     try {
       const btcPrice = await getBtcPrice();
       
-      // Get the previous price before updating
       const previousPrice = await prisma.tokenPrice.findFirst({
         where: {
           token: { address: STANDARD_TOKEN_IDS.BTC },
@@ -360,9 +320,7 @@ async function updateMarketMetrics(client: Client) {
         },
       });
       
-      // Wrap price update and alert checking in a single transaction
       await prisma.$transaction(async (tx) => {
-        // Update token price within transaction
         const token = await tx.token.upsert({
           where: { address: STANDARD_TOKEN_IDS.BTC },
           update: {},
@@ -376,7 +334,6 @@ async function updateMarketMetrics(client: Client) {
           },
         });
 
-        // Check price alerts within the same transaction, passing the previous price
         await checkPriceAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.BTC, btcPrice, previousPrice);
       });
       
@@ -385,11 +342,9 @@ async function updateMarketMetrics(client: Client) {
       logger.error(`[CronJob-MarketMetrics] Error updating BTC price:`, error);
     }
 
-    // Update ETH price from Uniswap
     try {
       const ethPrice = await getEthPrice();
       
-      // Get the previous price before updating
       const previousPrice = await prisma.tokenPrice.findFirst({
         where: {
           token: { address: STANDARD_TOKEN_IDS.ETH },
@@ -399,9 +354,7 @@ async function updateMarketMetrics(client: Client) {
         },
       });
       
-      // Wrap price update and alert checking in a single transaction
       await prisma.$transaction(async (tx) => {
-        // Update token price within transaction
         const token = await tx.token.upsert({
           where: { address: STANDARD_TOKEN_IDS.ETH },
           update: {},
@@ -415,7 +368,6 @@ async function updateMarketMetrics(client: Client) {
           },
         });
 
-        // Check price alerts within the same transaction, passing the previous price
         await checkPriceAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.ETH, ethPrice, previousPrice);
       });
       
@@ -424,7 +376,6 @@ async function updateMarketMetrics(client: Client) {
       logger.error(`[CronJob-MarketMetrics] Error updating ETH price:`, error);
     }
 
-    // Update bot status with latest price
     if (latestDevPrice !== null) {
       client.user?.setActivity(`DEV: ${formatPriceForDisplay(latestDevPrice)}`, {
         type: ActivityType.Watching,
@@ -438,11 +389,7 @@ async function updateMarketMetrics(client: Client) {
   }
 }
 
-/**
- * Starts the price update cron job
- */
 export function startDevPriceUpdateJob(client: Client) {
-  // Run initial cleanup and market metrics update on startup
   Promise.all([
     cleanupOrphanedAlerts(client),
     updateMarketMetrics(client),
@@ -450,7 +397,6 @@ export function startDevPriceUpdateJob(client: Client) {
     logger.error(`[CronJob] Error running initial startup tasks:`, error);
   });
 
-  // Run market metrics update every minute
   try {
     cron.schedule(
       '* * * * *',
@@ -470,10 +416,9 @@ export function startDevPriceUpdateJob(client: Client) {
     logger.error('[CronJob] Error scheduling market metrics cron job:', error);
   }
 
-  // Run cleanup of orphaned alerts every hour
   try {
     cron.schedule(
-      '0 * * * *', // At minute 0 of every hour
+      '0 * * * *',
       () => {
         cleanupOrphanedAlerts(client).catch(error => {
           logger.error(
