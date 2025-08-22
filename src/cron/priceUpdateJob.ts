@@ -7,7 +7,9 @@ import { STANDARD_TOKEN_IDS } from '../utils/constants';
 import { ALERT_COOLDOWN_PERIOD_MS } from '../utils/alertUtils';
 import { formatPriceForDisplay } from '../utils/priceFormatter';
 
+
 let latestDevPrice: number | null = null;
+
 
 async function cleanupOrphanedAlerts(client: Client) {
   try {
@@ -272,10 +274,12 @@ async function checkPriceAlertsWithTransaction(
 }
 
 async function updateMarketMetrics(client: Client) {
+  let currentDevPrice: number | null = null;
+  
   try {
     try {
       const devPrice = await getDevPrice();
-      latestDevPrice = devPrice;
+      currentDevPrice = devPrice;
       
       const previousPrice = await prisma.tokenPrice.findFirst({
         where: {
@@ -376,8 +380,8 @@ async function updateMarketMetrics(client: Client) {
       logger.error(`[CronJob-MarketMetrics] Error updating ETH price:`, error);
     }
 
-    if (latestDevPrice !== null) {
-      client.user?.setActivity(`DEV: ${formatPriceForDisplay(latestDevPrice)}`, {
+    if (currentDevPrice !== null) {
+      client.user?.setActivity(`DEV: ${formatPriceForDisplay(currentDevPrice)}`, {
         type: ActivityType.Watching,
       });
     }
