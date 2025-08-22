@@ -63,7 +63,6 @@ export async function getAlertStats(
 }
 
 export function formatAlertStatsMessage(stats: AlertStatsData, tokenId?: string): string {
-  // Create status message
   let statusMessage = '✅ All systems normal';
   if (stats.alertsInCooldown > 0) {
     statusMessage = `⏳ ${stats.alertsInCooldown} alert(s) cooling down`;

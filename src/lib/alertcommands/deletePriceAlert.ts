@@ -69,11 +69,9 @@ async function deleteDisabledAlerts(
 
     logger.info(`Found ${disabledAlerts.length} disabled alerts to delete`);
 
-    // Delete all disabled alerts
     let deletedCount = 0;
     for (const alert of disabledAlerts) {
       try {
-        // Delete the PriceAlert first if it exists
         if (alert.priceAlert) {
           await prisma.priceAlert.delete({
             where: {

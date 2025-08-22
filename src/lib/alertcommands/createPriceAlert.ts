@@ -35,7 +35,6 @@ export async function createPriceAlert(
     };
   }
 
-  // Validate the price alert value
   const validationResult = await validatePriceAlertValue(
     tokenId,
     value,
@@ -50,14 +49,12 @@ export async function createPriceAlert(
 
   try {
     await prisma.$transaction(async prisma => {
-      // Ensure server exists and is up to date
       const server = await prisma.discordServer.upsert({
         where: { id: guildId },
         update: { name: guildName },
         create: { id: guildId, name: guildName },
       });
 
-      // Ensure token exists with standardized ID
       const standardizedId = getStandardizedTokenId(tokenId);
       if (!standardizedId) {
         throw new Error(`Unsupported token: ${tokenId}`);
@@ -69,7 +66,6 @@ export async function createPriceAlert(
         create: { address: standardizedId },
       });
 
-      // Create the Alert with nested PriceAlert creation
       await prisma.alert.create({
         data: {
           channelId: channelId,
