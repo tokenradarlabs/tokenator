@@ -5,3 +5,4 @@ export * from './enablePriceAlert';
 export * from './disablePriceAlert';
 export * from './editPriceAlert';
 export * from './alertStats';
+export * from './createVolumeAlert';

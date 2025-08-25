@@ -3,9 +3,11 @@ import logger from '../utils/logger';
 import { Client, ActivityType, TextChannel } from 'discord.js';
 import prisma from '../utils/prisma';
 import { getDevPrice, getBtcPrice, getEthPrice } from '../utils/uniswapPrice';
+import { fetchTokenPriceDetailed } from '../utils/coinGecko';
 import { STANDARD_TOKEN_IDS } from '../utils/constants';
 import { ALERT_COOLDOWN_PERIOD_MS } from '../utils/alertUtils';
 import { formatPriceForDisplay } from '../utils/priceFormatter';
+import { formatNumber } from '../utils/coinGecko';
 
 let latestDevPrice: number | null = null;
 
@@ -186,7 +188,6 @@ async function checkPriceAlertsWithTransaction(
               ],
             },
             data: {
-              enabled: false,
               lastTriggered: now,
             },
           });
@@ -205,7 +206,7 @@ async function checkPriceAlertsWithTransaction(
                       `**Threshold:** ${formatPriceForDisplay(value)}\n` +
                       `**Current Price:** ${formatPriceForDisplay(currentPrice)}\n` +
                       `**Previous Price:** ${previousPrice ? formatPriceForDisplay(previousPrice.price) : 'N/A'}\n\n` +
-                      `This alert has been automatically disabled.`
+                      `This alert will be available again after the cooldown period.`
                   );
 
                   logger.info(
@@ -266,6 +267,192 @@ async function checkPriceAlertsWithTransaction(
       {
         tokenId,
         currentPrice,
+      }
+    );
+    throw error;
+  }
+}
+
+async function checkVolumeAlertsWithTransaction(
+  tx: any,
+  client: Client,
+  tokenId: string,
+  currentVolume: number,
+  previousVolume: any
+) {
+  try {
+    const token = await tx.token.findUnique({
+      where: { address: tokenId },
+    });
+
+    if (!token) {
+      logger.warn(`[CronJob-VolumeAlert] No token found for ID: ${tokenId}`);
+      return;
+    }
+
+    if (previousVolume) {
+      logger.info(
+        `[CronJob-VolumeAlert] Volume change for ${tokenId}: ${formatNumber(previousVolume.volume)} -> ${formatNumber(currentVolume)}`
+      );
+    }
+
+    const now = new Date();
+    // Volume alerts have daily cooldown (24 hours)
+    const cooldownThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const alerts = await tx.alert.findMany({
+      where: {
+        enabled: true,
+        tokenId: token.id,
+        volumeAlert: {
+          isNot: null,
+        },
+        OR: [
+          { lastTriggered: null },
+          { lastTriggered: { lt: cooldownThreshold } },
+        ],
+      },
+      include: {
+        volumeAlert: true,
+        token: true,
+      },
+    });
+
+    logger.info(
+      `[CronJob-VolumeAlert] Found ${alerts.length} active volume alerts for ${tokenId} (after cooldown filter)`
+    );
+
+    for (const alert of alerts) {
+      if (!alert.volumeAlert) continue;
+
+      const { direction, value } = alert.volumeAlert;
+      let shouldTrigger = false;
+
+      if (previousVolume) {
+        if (
+          direction === 'up' &&
+          previousVolume.volume < value &&
+          currentVolume >= value
+        ) {
+          shouldTrigger = true;
+          logger.info(
+            `[CronJob-VolumeAlert] Triggering UP volume alert: ${formatNumber(previousVolume.volume)} -> ${formatNumber(currentVolume)} (threshold: ${formatNumber(value)})`
+          );
+        } else if (
+          direction === 'down' &&
+          previousVolume.volume > value &&
+          currentVolume <= value
+        ) {
+          shouldTrigger = true;
+          logger.info(
+            `[CronJob-VolumeAlert] Triggering DOWN volume alert: ${formatNumber(previousVolume.volume)} -> ${formatNumber(currentVolume)} (threshold: ${formatNumber(value)})`
+          );
+        }
+      } else {
+        if (direction === 'up' && currentVolume >= value) {
+          shouldTrigger = true;
+          logger.info(
+            `[CronJob-VolumeAlert] Triggering UP volume alert (no previous volume): ${formatNumber(currentVolume)} >= ${formatNumber(value)}`
+          );
+        } else if (direction === 'down' && currentVolume <= value) {
+          shouldTrigger = true;
+          logger.info(
+            `[CronJob-VolumeAlert] Triggering DOWN volume alert (no previous volume): ${formatNumber(currentVolume)} <= ${formatNumber(value)}`
+          );
+        }
+      }
+
+      if (shouldTrigger) {
+        try {
+          const updatedAlert = await tx.alert.updateMany({
+            where: {
+              id: alert.id,
+              enabled: true,
+              OR: [
+                { lastTriggered: null },
+                { lastTriggered: { lt: cooldownThreshold } },
+              ],
+            },
+            data: {
+              lastTriggered: now,
+            },
+          });
+
+          if (updatedAlert.count > 0) {
+            setImmediate(async () => {
+              try {
+                const channel = await client.channels.fetch(alert.channelId);
+                if (channel && channel.isTextBased()) {
+                  const textChannel = channel as TextChannel;
+                  const directionEmoji = direction === 'up' ? '📈' : '📉';
+                  await textChannel.send(
+                    `${directionEmoji} **Volume Alert Triggered!**\n\n` +
+                      `**Token:** ${alert.token.address.toUpperCase()}\n` +
+                      `**Direction:** ${direction.toUpperCase()} ${directionEmoji}\n` +
+                      `**Threshold:** ${formatNumber(value)}\n` +
+                      `**Current 24h Volume:** ${formatNumber(currentVolume)}\n` +
+                      `**Previous 24h Volume:** ${previousVolume ? formatNumber(previousVolume.volume) : 'N/A'}\n\n` +
+                      `This alert will be available again after the cooldown period.`
+                  );
+
+                  logger.info(
+                    `[CronJob-VolumeAlert] Sent notification for triggered volume alert`,
+                    {
+                      channelId: alert.channelId,
+                      alertId: alert.id,
+                      tokenAddress: alert.token.address,
+                    }
+                  );
+                }
+              } catch (error) {
+                logger.error(
+                  `[CronJob-VolumeAlert] Error sending notification after transaction`,
+                  error as Error,
+                  {
+                    alertId: alert.id,
+                    channelId: alert.channelId,
+                    tokenId: alert.token.address,
+                  }
+                );
+              }
+            });
+
+            logger.info(
+              `[CronJob-VolumeAlert] Volume alert marked for notification (queued for after transaction)`,
+              {
+                alertId: alert.id,
+                tokenId: alert.token.address,
+              }
+            );
+          } else {
+            logger.info(
+              `[CronJob-VolumeAlert] Volume alert already triggered by another process (race condition prevented)`,
+              {
+                alertId: alert.id,
+                tokenId: alert.token.address,
+              }
+            );
+          }
+        } catch (error) {
+          logger.error(
+            `[CronJob-VolumeAlert] Error processing volume alert trigger within transaction`,
+            error as Error,
+            {
+              alertId: alert.id,
+              tokenId: alert.token.address,
+            }
+          );
+          throw error;
+        }
+      }
+    }
+  } catch (error) {
+    logger.error(
+      `[CronJob-VolumeAlert] Error checking volume alerts within transaction`,
+      error as Error,
+      {
+        tokenId,
+        currentVolume,
       }
     );
     throw error;
@@ -392,10 +579,135 @@ async function updateMarketMetrics(client: Client) {
   }
 }
 
+async function updateVolumeMetrics(client: Client) {
+  try {
+    // Update DEV volume
+    try {
+      const devResult = await fetchTokenPriceDetailed(STANDARD_TOKEN_IDS.DEV);
+      if (devResult.ok && devResult.data.usd_24h_vol) {
+        const devVolume = devResult.data.usd_24h_vol;
+        
+        const previousVolume = await prisma.tokenVolume.findFirst({
+          where: {
+            token: { address: STANDARD_TOKEN_IDS.DEV },
+          },
+          orderBy: {
+            timestamp: 'desc',
+          },
+        });
+
+        await prisma.$transaction(async (tx) => {
+          const token = await tx.token.upsert({
+            where: { address: STANDARD_TOKEN_IDS.DEV },
+            update: {},
+            create: { address: STANDARD_TOKEN_IDS.DEV },
+          });
+
+          await tx.tokenVolume.create({
+            data: {
+              volume: devVolume,
+              tokenId: token.id,
+            },
+          });
+
+          await checkVolumeAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.DEV, devVolume, previousVolume);
+        });
+        
+        logger.info(`[CronJob-VolumeMetrics] Updated DEV volume: ${formatNumber(devVolume)}`);
+      }
+    } catch (error) {
+      logger.error(`[CronJob-VolumeMetrics] Error updating DEV volume:`, error);
+    }
+
+    // Update BTC volume
+    try {
+      const btcResult = await fetchTokenPriceDetailed(STANDARD_TOKEN_IDS.BTC);
+      if (btcResult.ok && btcResult.data.usd_24h_vol) {
+        const btcVolume = btcResult.data.usd_24h_vol;
+        
+        const previousVolume = await prisma.tokenVolume.findFirst({
+          where: {
+            token: { address: STANDARD_TOKEN_IDS.BTC },
+          },
+          orderBy: {
+            timestamp: 'desc',
+          },
+        });
+
+        await prisma.$transaction(async (tx) => {
+          const token = await tx.token.upsert({
+            where: { address: STANDARD_TOKEN_IDS.BTC },
+            update: {},
+            create: { address: STANDARD_TOKEN_IDS.BTC },
+          });
+
+          await tx.tokenVolume.create({
+            data: {
+              volume: btcVolume,
+              tokenId: token.id,
+            },
+          });
+
+          await checkVolumeAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.BTC, btcVolume, previousVolume);
+        });
+        
+        logger.info(`[CronJob-VolumeMetrics] Updated BTC volume: ${formatNumber(btcVolume)}`);
+      }
+    } catch (error) {
+      logger.error(`[CronJob-VolumeMetrics] Error updating BTC volume:`, error);
+    }
+
+    // Update ETH volume
+    try {
+      const ethResult = await fetchTokenPriceDetailed(STANDARD_TOKEN_IDS.ETH);
+      if (ethResult.ok && ethResult.data.usd_24h_vol) {
+        const ethVolume = ethResult.data.usd_24h_vol;
+        
+        const previousVolume = await prisma.tokenVolume.findFirst({
+          where: {
+            token: { address: STANDARD_TOKEN_IDS.ETH },
+          },
+          orderBy: {
+            timestamp: 'desc',
+          },
+        });
+
+        await prisma.$transaction(async (tx) => {
+          const token = await tx.token.upsert({
+            where: { address: STANDARD_TOKEN_IDS.ETH },
+            update: {},
+            create: { address: STANDARD_TOKEN_IDS.ETH },
+          });
+
+          await tx.tokenVolume.create({
+            data: {
+              volume: ethVolume,
+              tokenId: token.id,
+            },
+          });
+
+          await checkVolumeAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.ETH, ethVolume, previousVolume);
+        });
+        
+        logger.info(`[CronJob-VolumeMetrics] Updated ETH volume: ${formatNumber(ethVolume)}`);
+      }
+    } catch (error) {
+      logger.error(`[CronJob-VolumeMetrics] Error updating ETH volume:`, error);
+    }
+
+  } catch (error) {
+    logger.error(
+      `[CronJob-VolumeMetrics] Error updating volume metrics:`,
+      error
+    );
+  }
+}
+
 export function startDevPriceUpdateJob(client: Client) {
   Promise.all([
     cleanupOrphanedAlerts(client),
     updateMarketMetrics(client),
+    updateVolumeMetrics(client), // Run volume update on startup
   ]).catch(error => {
     logger.error(`[CronJob] Error running initial startup tasks:`, error);
   });
@@ -436,5 +748,25 @@ export function startDevPriceUpdateJob(client: Client) {
     );
   } catch (error) {
     logger.error('[CronJob] Error scheduling cleanup cron job:', error);
+  }
+
+  // Daily volume metrics update (runs at 00:00 UTC every day)
+  try {
+    cron.schedule(
+      '0 0 * * *',
+      () => {
+        updateVolumeMetrics(client).catch(error => {
+          logger.error(
+            `[CronJob] Error running scheduled volume metrics update:`,
+            error
+          );
+        });
+      },
+      {
+        timezone: 'UTC',
+      }
+    );
+  } catch (error) {
+    logger.error('[CronJob] Error scheduling volume metrics cron job:', error);
   }
 }
