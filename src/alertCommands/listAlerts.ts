@@ -4,12 +4,12 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import logger from "../utils/logger";
-import { PriceAlertDirection } from "../generated/prisma/client";
-import { listPriceAlerts, formatAlertsForDisplay } from "../lib/alertcommands";
+import { PriceAlertDirection, VolumeAlertDirection } from "../generated/prisma/client";
+import { listAlerts, formatAlertsForDisplay } from "../lib/alertcommands";
 
-export const listPriceAlertsCommand = new SlashCommandBuilder()
+export const listAlertsCommand = new SlashCommandBuilder()
   .setName("list-alerts")
-  .setDescription("Lists all price alerts for the current channel.")
+  .setDescription("Lists all alerts for the current channel.")
   .addStringOption((option) =>
     option
       .setName("direction")
@@ -21,10 +21,14 @@ export const listPriceAlertsCommand = new SlashCommandBuilder()
     option
       .setName("type")
       .setDescription(
-        "Filter by alert type (currently only 'price' is supported).",
+        "Filter by alert type"
       )
       .setRequired(false)
-      .addChoices({ name: "Price", value: "price" }),
+      .addChoices(
+        { name: "Price", value: "price" },
+        { name: "Volume", value: "volume" },
+        { name: "All", value: "all" }
+      ),
   )
   .addStringOption((option) =>
     option
@@ -41,13 +45,14 @@ export const listPriceAlertsCommand = new SlashCommandBuilder()
   )
   .toJSON();
 
-export async function handleListPriceAlerts(
+export async function handleListAlerts(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const { guildId, channelId } = interaction;
   const direction = interaction.options.getString(
     "direction",
-  ) as PriceAlertDirection | null;
+  ) as PriceAlertDirection | VolumeAlertDirection | null;
+  const alertType = interaction.options.getString("type");
   const tokenAddress = interaction.options.getString("token");
   const enabledStatus = interaction.options.getString("enabled");
 
@@ -60,17 +65,18 @@ export async function handleListPriceAlerts(
   }
 
   try {
-    const result = await listPriceAlerts({
+    const result = await listAlerts({
       guildId,
       channelId,
       direction: direction || undefined,
+      alertType: alertType || undefined,
       tokenAddress: tokenAddress || undefined,
       enabledStatus: enabledStatus || undefined,
     });
 
     if (!result.success) {
       await interaction.reply({
-        content: result.message || "Sorry, there was an error listing the price alerts.",
+        content: result.message || "Sorry, there was an error listing the alerts.",
         flags: 64,
       });
       return;
@@ -78,14 +84,14 @@ export async function handleListPriceAlerts(
 
     if (!result.alerts || result.alerts.length === 0) {
       await interaction.reply({
-        content: result.message || "No price alerts found for this channel with the specified filters.",
+        content: result.message || "No alerts found for this channel with the specified filters.",
         flags: 64,
       });
       return;
     }
 
     const embed = new EmbedBuilder()
-      .setTitle("Price Alerts in this Channel")
+      .setTitle("Alerts in this Channel")
       .setColor(0x0099ff)
       .setTimestamp();
 
