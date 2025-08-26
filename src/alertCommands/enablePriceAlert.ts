@@ -8,7 +8,7 @@ import { enablePriceAlert } from '../lib/alertcommands';
 
 export const enablePriceAlertCommand = new SlashCommandBuilder()
   .setName('enable-alert')
-  .setDescription('Enables a price alert by its ID or all disabled alerts.')
+  .setDescription('Enables an alert by its ID or disabled alerts by type.')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
   .addStringOption(option =>
     option
@@ -16,11 +16,16 @@ export const enablePriceAlertCommand = new SlashCommandBuilder()
       .setDescription('The ID of the alert to enable.')
       .setRequired(false)
   )
-  .addBooleanOption(option =>
+  .addStringOption(option =>
     option
-      .setName('enable-all')
-      .setDescription('Enable all disabled alerts in this channel.')
+      .setName('enable-type')
+      .setDescription('Choose which type of alerts to enable.')
       .setRequired(false)
+      .addChoices(
+        { name: 'All alerts', value: 'all' },
+        { name: 'Price alerts only', value: 'price' },
+        { name: 'Volume alerts only', value: 'volume' }
+      )
   )
   .toJSON();
 
@@ -28,7 +33,7 @@ export async function handleEnablePriceAlert(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
   const alertId = interaction.options.getString('id');
-  const enableAll = interaction.options.getBoolean('enable-all');
+  const enableType = interaction.options.getString('enable-type');
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {
@@ -42,7 +47,7 @@ export async function handleEnablePriceAlert(
   try {
     const result = await enablePriceAlert({
       alertId: alertId || undefined,
-      enableAll: enableAll || undefined,
+      enableType: (enableType as 'all' | 'price' | 'volume') || undefined,
       guildId,
       channelId,
     });

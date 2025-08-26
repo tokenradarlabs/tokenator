@@ -1,32 +1,32 @@
 import logger from '../../utils/logger';
 import prisma from '../../utils/prisma';
 
-export interface EnablePriceAlertParams {
+export interface EnableAlertParams {
   alertId?: string;
-  enableAll?: boolean;
+  enableType?: 'all' | 'price' | 'volume';
   guildId: string;
   channelId: string;
 }
 
-export interface EnablePriceAlertResult {
+export interface EnableAlertResult {
   success: boolean;
   message: string;
 }
 
-export async function enablePriceAlert(
-  params: EnablePriceAlertParams
-): Promise<EnablePriceAlertResult> {
-  const { alertId, enableAll, guildId, channelId } = params;
+export async function enableAlert(
+  params: EnableAlertParams
+): Promise<EnableAlertResult> {
+  const { alertId, enableType, guildId, channelId } = params;
 
-  if (!alertId && enableAll !== true) {
+  if (!alertId && !enableType) {
     return {
       success: false,
-      message: 'Please provide either an alert ID or use the enable-all option.',
+      message: 'Please provide either an alert ID or select an enable type.',
     };
   }
 
-  if (enableAll === true) {
-    return await enableAllDisabledAlerts(guildId, channelId);
+  if (enableType) {
+    return await enableDisabledAlertsByType(guildId, channelId, enableType);
   }
 
   if (alertId) {
@@ -39,32 +39,72 @@ export async function enablePriceAlert(
   };
 }
 
-async function enableAllDisabledAlerts(
+async function enableDisabledAlertsByType(
   guildId: string,
-  channelId: string
-): Promise<EnablePriceAlertResult> {
+  channelId: string,
+  enableType: 'all' | 'price' | 'volume'
+): Promise<EnableAlertResult> {
   try {
-    logger.info(`Attempting to enable all disabled alerts from guild ${guildId} channel ${channelId}`);
+    logger.info(`Attempting to enable ${enableType} disabled alerts from guild ${guildId} channel ${channelId}`);
 
-    const disabledAlerts = await prisma.alert.findMany({
-      where: {
-        discordServerId: guildId,
-        channelId: channelId,
-        enabled: false,
+    // Build the where clause based on the type
+    const baseWhereClause = {
+      discordServerId: guildId,
+      channelId: channelId,
+      enabled: false,
+    };
+
+    let whereClause: any;
+    
+    if (enableType === 'all') {
+      whereClause = {
+        ...baseWhereClause,
+        OR: [
+          {
+            priceAlert: {
+              isNot: null,
+            },
+          },
+          {
+            volumeAlert: {
+              isNot: null,
+            },
+          },
+        ],
+      };
+    } else if (enableType === 'price') {
+      whereClause = {
+        ...baseWhereClause,
         priceAlert: {
           isNot: null,
         },
+      };
+    } else if (enableType === 'volume') {
+      whereClause = {
+        ...baseWhereClause,
+        volumeAlert: {
+          isNot: null,
+        },
+      };
+    }
+
+    const disabledAlerts = await prisma.alert.findMany({
+      where: whereClause,
+      include: {
+        priceAlert: true,
+        volumeAlert: true,
       },
     });
 
     if (disabledAlerts.length === 0) {
+      const typeText = enableType === 'all' ? '' : ` ${enableType}`;
       return {
         success: true,
-        message: 'No disabled alerts found in this channel.',
+        message: `No disabled${typeText} alerts found in this channel.`,
       };
     }
 
-    logger.info(`Found ${disabledAlerts.length} disabled alerts to enable`);
+    logger.info(`Found ${disabledAlerts.length} disabled ${enableType} alerts to enable`);
 
     let enabledCount = 0;
     for (const alert of disabledAlerts) {
@@ -82,14 +122,16 @@ async function enableAllDisabledAlerts(
       }
     }
 
-    logger.info(`Successfully enabled ${enabledCount} alerts`);
+    logger.info(`Successfully enabled ${enabledCount} ${enableType} alerts`);
+    const typeText = enableType === 'all' ? '' : ` ${enableType}`;
     return {
       success: true,
-      message: `Successfully enabled ${enabledCount} alerts in this channel.`,
+      message: `Successfully enabled ${enabledCount}${typeText} alerts in this channel.`,
     };
   } catch (error) {
-    logger.error('Error enabling all disabled alerts:', {
+    logger.error('Error enabling disabled alerts:', {
       error,
+      enableType,
       guildId,
       channelId,
     });
@@ -110,7 +152,7 @@ async function enableSpecificAlert(
   alertId: string,
   guildId: string,
   channelId: string
-): Promise<EnablePriceAlertResult> {
+): Promise<EnableAlertResult> {
   try {
     logger.info(
       `Attempting to enable alert ${alertId} from guild ${guildId} channel ${channelId}`
@@ -171,7 +213,7 @@ async function enableSpecificAlert(
       channelId,
     });
 
-    let errorMessage = 'Sorry, there was an error enabling the price alert.';
+    let errorMessage = 'Sorry, there was an error enabling the alert.';
     if (error instanceof Error) {
       errorMessage += ` Error: ${error.message}`;
     }
@@ -182,3 +224,22 @@ async function enableSpecificAlert(
     };
   }
 }
+
+// Backward compatibility exports
+export type EnablePriceAlertParams = EnableAlertParams;
+export type EnablePriceAlertResult = EnableAlertResult;
+
+// Backward compatibility function that maps old enableAll boolean to new enableType
+export const enablePriceAlert = (params: EnableAlertParams | { alertId?: string; enableAll?: boolean; guildId: string; channelId: string; }): Promise<EnableAlertResult> => {
+  // Handle both old and new parameter formats
+  if ('enableAll' in params && params.enableAll) {
+    return enableAlert({
+      alertId: params.alertId,
+      enableType: 'all',
+      guildId: params.guildId,
+      channelId: params.channelId,
+    });
+  }
+  
+  return enableAlert(params as EnableAlertParams);
+};
