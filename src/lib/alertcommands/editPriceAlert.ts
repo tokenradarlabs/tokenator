@@ -1,11 +1,11 @@
 import logger from '../../utils/logger';
 import prisma from '../../utils/prisma';
-import { PriceAlertDirection } from '../../generated/prisma/client';
+import { AlertDirection } from '../../generated/prisma/client';
 import { validatePriceAlertValue } from '../../utils/priceValidation';
 
 export interface EditPriceAlertParams {
   alertId: string;
-  newDirection?: PriceAlertDirection;
+  newDirection?: AlertDirection;
   newValue?: number;
   guildId: string;
   channelId: string;
@@ -82,7 +82,7 @@ export async function editPriceAlert(
       }
     }
 
-    const updateData: { direction?: PriceAlertDirection; value?: number } = {};
+    const updateData: { direction?: AlertDirection; value?: number } = {};
     if (newDirection) {
       updateData.direction = newDirection;
     }

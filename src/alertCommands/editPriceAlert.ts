@@ -3,7 +3,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from 'discord.js';
-import { PriceAlertDirection } from '../generated/prisma/client';
+import { AlertDirection } from '../generated/prisma/client';
 import logger from '../utils/logger';
 import { editPriceAlert } from '../lib/alertcommands';
 
@@ -38,7 +38,7 @@ export async function handleEditPriceAlert(
   const alertId = interaction.options.getString('id', true);
   const newDirection = interaction.options.getString(
     'direction'
-  ) as PriceAlertDirection | null;
+  ) as AlertDirection | null;
   const newValue = interaction.options.getNumber('value');
   const { guildId, channelId } = interaction;
 

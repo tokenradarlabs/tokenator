@@ -1,13 +1,13 @@
 import logger from '../../utils/logger';
 import prisma from '../../utils/prisma';
-import { PriceAlertDirection, VolumeAlertDirection } from '../../generated/prisma/client';
+import { AlertDirection } from '../../generated/prisma/client';
 import { formatPriceForDisplay } from '../../utils/priceFormatter';
 import { formatNumber } from '../../utils/coinGecko';
 
 export interface ListAlertsParams {
   guildId: string;
   channelId: string;
-  direction?: PriceAlertDirection | VolumeAlertDirection;
+  direction?: AlertDirection;
   alertType?: string;
   tokenAddress?: string;
   enabledStatus?: string;
@@ -16,7 +16,7 @@ export interface ListAlertsParams {
 export interface AlertData {
   id: string;
   tokenAddress: string;
-  direction: PriceAlertDirection | VolumeAlertDirection;
+  direction: AlertDirection;
   value: number;
   enabled: boolean;
   createdAt: Date;
@@ -56,13 +56,20 @@ export async function listAlerts(
 
     // Fetch price alerts
     if (shouldFetchPrice) {
-      const priceWhereClause = {
+      const priceWhereClause: any = {
         ...baseWhereClause,
-        priceAlert: {
-          isNot: null,
-          ...(direction ? { direction } : {}),
-        },
       };
+
+      // Add priceAlert filter - either just exists, or exists with specific direction
+      if (direction) {
+        priceWhereClause.priceAlert = {
+          direction: direction,
+        };
+      } else {
+        priceWhereClause.priceAlert = { 
+          isNot: null 
+        };
+      }
 
       const priceAlerts = await prisma.alert.findMany({
         where: priceWhereClause,
@@ -80,13 +87,20 @@ export async function listAlerts(
 
     // Fetch volume alerts
     if (shouldFetchVolume) {
-      const volumeWhereClause = {
+      const volumeWhereClause: any = {
         ...baseWhereClause,
-        volumeAlert: {
-          isNot: null,
-          ...(direction ? { direction } : {}),
-        },
       };
+
+      // Add volumeAlert filter - either just exists, or exists with specific direction
+      if (direction) {
+        volumeWhereClause.volumeAlert = {
+          direction: direction,
+        };
+      } else {
+        volumeWhereClause.volumeAlert = { 
+          isNot: null 
+        };
+      }
 
       const volumeAlerts = await prisma.alert.findMany({
         where: volumeWhereClause,

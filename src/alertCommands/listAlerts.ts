@@ -4,7 +4,7 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import logger from "../utils/logger";
-import { PriceAlertDirection, VolumeAlertDirection } from "../generated/prisma/client";
+import { AlertDirection } from "../generated/prisma/client";
 import { listAlerts, formatAlertsForDisplay } from "../lib/alertcommands";
 
 export const listAlertsCommand = new SlashCommandBuilder()
@@ -33,8 +33,13 @@ export const listAlertsCommand = new SlashCommandBuilder()
   .addStringOption((option) =>
     option
       .setName("token")
-      .setDescription("Filter by token address")
-      .setRequired(false),
+      .setDescription("Filter by token")
+      .setRequired(false)
+      .addChoices(
+        { name: "DEV (Scout Protocol)", value: "scout-protocol-token" },
+        { name: "BTC (Bitcoin)", value: "bitcoin" },
+        { name: "ETH (Ethereum)", value: "ethereum" }
+      ),
   )
   .addStringOption((option) =>
     option
@@ -51,7 +56,7 @@ export async function handleListAlerts(
   const { guildId, channelId } = interaction;
   const direction = interaction.options.getString(
     "direction",
-  ) as PriceAlertDirection | VolumeAlertDirection | null;
+  ) as AlertDirection | null;
   const alertType = interaction.options.getString("type");
   const tokenAddress = interaction.options.getString("token");
   const enabledStatus = interaction.options.getString("enabled");

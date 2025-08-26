@@ -28,12 +28,7 @@ model DiscordServer {
   alerts Alert[]
 }
 
-enum PriceAlertDirection {
-  up
-  down
-}
-
-enum VolumeAlertDirection {
+enum AlertDirection {
   up
   down
 }
@@ -54,19 +49,19 @@ model Alert {
 }
 
 model PriceAlert {
-  id        String              @id @default(uuid())
-  direction PriceAlertDirection
+  id        String         @id @default(uuid())
+  direction AlertDirection
   value     Float
-  alertId   String              @unique
-  alert     Alert               @relation("AlertToPriceAlert", fields: [alertId], references: [id])
+  alertId   String         @unique
+  alert     Alert          @relation("AlertToPriceAlert", fields: [alertId], references: [id])
 }
 
 model VolumeAlert {
-  id        String               @id @default(uuid())
-  direction VolumeAlertDirection
+  id        String         @id @default(uuid())
+  direction AlertDirection
   value     Float
-  alertId   String               @unique
-  alert     Alert                @relation("AlertToVolumeAlert", fields: [alertId], references: [id])
+  alertId   String         @unique
+  alert     Alert          @relation("AlertToVolumeAlert", fields: [alertId], references: [id])
 }
 
 model TokenPrice {
