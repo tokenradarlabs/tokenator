@@ -42,11 +42,11 @@ import {
 import {
   disablePriceAlertCommand,
   handleDisablePriceAlert,
-} from './alertCommands/disablePriceAlert';
+} from './alertCommands/disableAlert';
 import {
   enablePriceAlertCommand,
   handleEnablePriceAlert,
-} from './alertCommands/enablePriceAlert';
+} from './alertCommands/enableAlert';
 import {
   alertStatsCommand,
   handleAlertStats,
