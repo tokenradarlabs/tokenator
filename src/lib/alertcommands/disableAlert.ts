@@ -1,32 +1,32 @@
 import logger from '../../utils/logger';
 import prisma from '../../utils/prisma';
 
-export interface DisablePriceAlertParams {
+export interface DisableAlertParams {
   alertId?: string;
-  disableAll?: boolean;
+  disableType?: 'all' | 'price' | 'volume';
   guildId: string;
   channelId: string;
 }
 
-export interface DisablePriceAlertResult {
+export interface DisableAlertResult {
   success: boolean;
   message: string;
 }
 
-export async function disablePriceAlert(
-  params: DisablePriceAlertParams
-): Promise<DisablePriceAlertResult> {
-  const { alertId, disableAll, guildId, channelId } = params;
+export async function disableAlert(
+  params: DisableAlertParams
+): Promise<DisableAlertResult> {
+  const { alertId, disableType, guildId, channelId } = params;
 
-  if (!alertId && disableAll !== true) {
+  if (!alertId && !disableType) {
     return {
       success: false,
-      message: 'Please provide either an alert ID or use the disable-all option.',
+      message: 'Please provide either an alert ID or select a disable type.',
     };
   }
 
-  if (disableAll === true) {
-    return await disableAllEnabledAlerts(guildId, channelId);
+  if (disableType) {
+    return await disableEnabledAlertsByType(guildId, channelId, disableType);
   }
 
   if (alertId) {
@@ -39,32 +39,72 @@ export async function disablePriceAlert(
   };
 }
 
-async function disableAllEnabledAlerts(
+async function disableEnabledAlertsByType(
   guildId: string,
-  channelId: string
-): Promise<DisablePriceAlertResult> {
+  channelId: string,
+  disableType: 'all' | 'price' | 'volume'
+): Promise<DisableAlertResult> {
   try {
-    logger.info(`Attempting to disable all enabled alerts from guild ${guildId} channel ${channelId}`);
+    logger.info(`Attempting to disable ${disableType} enabled alerts from guild ${guildId} channel ${channelId}`);
 
-    const enabledAlerts = await prisma.alert.findMany({
-      where: {
-        discordServerId: guildId,
-        channelId: channelId,
-        enabled: true,
+    // Build the where clause based on the type
+    const baseWhereClause = {
+      discordServerId: guildId,
+      channelId: channelId,
+      enabled: true,
+    };
+
+    let whereClause: any;
+    
+    if (disableType === 'all') {
+      whereClause = {
+        ...baseWhereClause,
+        OR: [
+          {
+            priceAlert: {
+              isNot: null,
+            },
+          },
+          {
+            volumeAlert: {
+              isNot: null,
+            },
+          },
+        ],
+      };
+    } else if (disableType === 'price') {
+      whereClause = {
+        ...baseWhereClause,
         priceAlert: {
           isNot: null,
         },
+      };
+    } else if (disableType === 'volume') {
+      whereClause = {
+        ...baseWhereClause,
+        volumeAlert: {
+          isNot: null,
+        },
+      };
+    }
+
+    const enabledAlerts = await prisma.alert.findMany({
+      where: whereClause,
+      include: {
+        priceAlert: true,
+        volumeAlert: true,
       },
     });
 
     if (enabledAlerts.length === 0) {
+      const typeText = disableType === 'all' ? '' : ` ${disableType}`;
       return {
         success: true,
-        message: 'No enabled alerts found in this channel.',
+        message: `No enabled${typeText} alerts found in this channel.`,
       };
     }
 
-    logger.info(`Found ${enabledAlerts.length} enabled alerts to disable`);
+    logger.info(`Found ${enabledAlerts.length} enabled ${disableType} alerts to disable`);
 
     let disabledCount = 0;
     for (const alert of enabledAlerts) {
@@ -79,14 +119,16 @@ async function disableAllEnabledAlerts(
       }
     }
 
-    logger.info(`Successfully disabled ${disabledCount} alerts`);
+    logger.info(`Successfully disabled ${disabledCount} ${disableType} alerts`);
+    const typeText = disableType === 'all' ? '' : ` ${disableType}`;
     return {
       success: true,
-      message: `Successfully disabled ${disabledCount} alerts in this channel.`,
+      message: `Successfully disabled ${disabledCount}${typeText} alerts in this channel.`,
     };
   } catch (error) {
-    logger.error('Error disabling all enabled alerts:', {
+    logger.error('Error disabling enabled alerts:', {
       error,
+      disableType,
       guildId,
       channelId,
     });
@@ -107,7 +149,7 @@ async function disableSpecificAlert(
   alertId: string,
   guildId: string,
   channelId: string
-): Promise<DisablePriceAlertResult> {
+): Promise<DisableAlertResult> {
   try {
     logger.info(`Attempting to disable alert ${alertId} from guild ${guildId} channel ${channelId}`);
 
@@ -172,3 +214,8 @@ async function disableSpecificAlert(
     };
   }
 }
+
+// Backward compatibility exports
+export { disableAlert as disablePriceAlert };
+export type { DisableAlertParams as DisablePriceAlertParams };
+export type { DisableAlertResult as DisablePriceAlertResult };
