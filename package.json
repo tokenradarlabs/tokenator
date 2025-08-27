@@ -1,7 +1,7 @@
 {
-  "name": "dev-bot",
+  "name": "tokenator",
   "version": "1.0.0",
-  "description": "scoutgame dev token price tracker bot",
+  "description": "Feature rich discord Bot for token price alerts",
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
