@@ -36,6 +36,10 @@ import {
   handleEditPriceAlert,
 } from './alertCommands/editPriceAlert';
 import {
+  editVolumeAlertCommand,
+  handleEditVolumeAlert,
+} from './alertCommands/editVolumeAlert';
+import {
   deletePriceAlertCommand,
   handleDeletePriceAlert,
 } from './alertCommands/deletePriceAlert';
@@ -131,6 +135,7 @@ const commandsData: ApplicationCommandDataResolvable[] = [
   createVolumeAlertCommand,
   listAlertsCommand,
   editPriceAlertCommand,
+  editVolumeAlertCommand,
   deletePriceAlertCommand,
   disablePriceAlertCommand,
   enablePriceAlertCommand,
@@ -274,6 +279,8 @@ async function handleInteractionCommands(
     await handleListAlerts(interaction);
   } else if (commandName === 'edit-price-alert') {
     await handleEditPriceAlert(interaction);
+  } else if (commandName === 'edit-volume-alert') {
+    await handleEditVolumeAlert(interaction);
   } else if (commandName === 'delete-alert') {
     await handleDeletePriceAlert(interaction);
   } else if (commandName === 'disable-alert') {

@@ -6,4 +6,5 @@ export * from './disableAlert';
 export * from './editPriceAlert';
 export * from './alertStats';
 export * from './createVolumeAlert';
-export * from './alertStats';
+
+export * from './editVolumeAlert';
