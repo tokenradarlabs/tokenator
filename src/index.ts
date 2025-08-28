@@ -40,13 +40,9 @@ import {
   handleEditVolumeAlert,
 } from './alertCommands/editVolumeAlert';
 import {
-  deletePriceAlertCommand,
-  handleDeletePriceAlert,
-} from './alertCommands/deletePriceAlert';
-import {
-  deleteVolumeAlertCommand,
-  handleDeleteVolumeAlert,
-} from './alertCommands/deleteVolumeAlert';
+  deleteAlertCommand,
+  handleDeleteAlert,
+} from './alertCommands/deleteAlert';
 import {
   disablePriceAlertCommand,
   handleDisablePriceAlert,
@@ -140,8 +136,7 @@ const commandsData: ApplicationCommandDataResolvable[] = [
   listAlertsCommand,
   editPriceAlertCommand,
   editVolumeAlertCommand,
-  deletePriceAlertCommand,
-  deleteVolumeAlertCommand,
+  deleteAlertCommand,
   disablePriceAlertCommand,
   enablePriceAlertCommand,
   alertStatsCommand,
@@ -287,9 +282,7 @@ async function handleInteractionCommands(
   } else if (commandName === 'edit-volume-alert') {
     await handleEditVolumeAlert(interaction);
   } else if (commandName === 'delete-alert') {
-    await handleDeletePriceAlert(interaction);
-  } else if (commandName === 'delete-volume-alert') {
-    await handleDeleteVolumeAlert(interaction);
+    await handleDeleteAlert(interaction);
   } else if (commandName === 'disable-alert') {
     await handleDisablePriceAlert(interaction);
   } else if (commandName === 'enable-alert') {
