@@ -5,7 +5,10 @@ import {
 } from 'discord.js';
 import { AlertDirection } from '../generated/prisma/client';
 import logger from '../utils/logger';
-import { editPriceAlert } from '../lib/alertcommands';
+import { editPriceAlert, findPriceAlertById } from '../lib/alertcommands';
+import { validatePriceAlertValue } from '../utils/priceValidation';
+import { getStandardizedTokenId } from '../utils/constants';
+import { formatPrice } from '../utils/priceFormatter';
 
 export const editPriceAlertCommand = new SlashCommandBuilder()
   .setName('edit-price-alert')
@@ -48,6 +51,55 @@ export async function handleEditPriceAlert(
       flags: 64,
     });
     return;
+  }
+
+  if (!newDirection && !newValue) {
+    await interaction.reply({
+      content: 'Please provide either a new direction or a new value to edit the alert.',
+      flags: 64,
+    });
+    return;
+  }
+
+  const existingAlert = await findPriceAlertById(alertId, guildId);
+
+  if (!existingAlert) {
+    await interaction.reply({
+      content: `No price alert found with ID: ${alertId}`,
+      flags: 64,
+    });
+    return;
+  }
+
+  const tokenId = existingAlert.tokenId;
+
+  if (newValue !== null) {
+    const standardizedTokenId = getStandardizedTokenId(tokenId);
+
+    if (!standardizedTokenId) {
+      await interaction.reply({
+        content: `Unsupported token for price validation: ${tokenId}`,
+        flags: 64,
+      });
+      return;
+    }
+
+    // If newDirection is not provided, use the existing alert's direction for validation
+    const directionForValidation = newDirection || existingAlert.direction;
+
+    const validationResult = await validatePriceAlertValue(
+      standardizedTokenId,
+      newValue,
+      directionForValidation
+    );
+
+    if (!validationResult.isValid) {
+      await interaction.reply({
+        content: `Invalid price value: ${validationResult.errorMessage}`,
+        flags: 64,
+      });
+      return;
+    }
   }
 
   try {
