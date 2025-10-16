@@ -2,6 +2,14 @@ import logger from './logger';
 import { config } from '../config';
 import 'dotenv/config';
 
+// In-memory cache for CoinGecko API responses to deduplicate frequent identical requests.
+// This cache is tiny, optional, and designed for short-term deduplication within a single run.
+// On cache failures (e.g., unexpected data structure), it will gracefully fallback to a fresh API call.
+// Cache entries expire after COINGECKO_CACHE_TTL_SECONDS.
+const COINGECKO_CACHE_TTL_SECONDS = 5; // Cache entries expire after 5 seconds
+const priceCache = new Map<string, { data: CoinGeckoPriceDetail; expiry: number }>();
+const cacheTimeouts = new Map<string, NodeJS.Timeout>();
+
 // Utility to format numbers for display (e.g., 1.2K, 1.2M)
 export function formatNumber(num: number, decimals: number = 2): string {
     if (num >= 1000000) {
@@ -53,6 +61,13 @@ function mapStatusToErrorType(status: number): CoinGeckoErrorType {
  * Fetches price data from CoinGecko with detailed error context
  */
 export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeckoFetchResult> {
+  // Check cache first
+  const cached = priceCache.get(tokenId);
+  if (cached && cached.expiry > Date.now()) {
+    logger.info(`[CoinGecko] Returning cached price for token: ${tokenId}`);
+    return { ok: true, data: cached.data };
+  }
+
   const url = `https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${tokenId}&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&precision=5`;
   const options = {
     method: 'GET',
@@ -96,6 +111,22 @@ export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeck
     }
 
     logger.info(`[CoinGecko] Successfully fetched price for ${tokenId}: $${tokenData.usd}`);
+
+    // Cache the successful response
+    const expiry = Date.now() + COINGECKO_CACHE_TTL_SECONDS * 1000;
+    priceCache.set(tokenId, { data: tokenData, expiry });
+
+    // Clear any existing timeout and set a new one
+    if (cacheTimeouts.has(tokenId)) {
+      clearTimeout(cacheTimeouts.get(tokenId));
+    }
+    const timeout = setTimeout(() => {
+      priceCache.delete(tokenId);
+      cacheTimeouts.delete(tokenId);
+      logger.debug(`[CoinGecko] Cache for ${tokenId} expired and cleared.`);
+    }, COINGECKO_CACHE_TTL_SECONDS * 1000);
+    cacheTimeouts.set(tokenId, timeout);
+
     return { ok: true, data: tokenData };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown network error';
