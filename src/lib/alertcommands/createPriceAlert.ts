@@ -48,38 +48,46 @@ export async function createPriceAlert(
   }
 
   try {
-    await prisma.$transaction(async prisma => {
-      const server = await prisma.discordServer.upsert({
+    const standardizedId = getStandardizedTokenId(tokenId);
+    if (!standardizedId) {
+      throw new Error(`Unsupported token: ${tokenId}`);
+    }
+
+    const alert = await prisma.$transaction(async (tx) => {
+      // Upsert DiscordServer
+      await tx.discordServer.upsert({
         where: { id: guildId },
         update: { name: guildName },
         create: { id: guildId, name: guildName },
       });
 
-      const standardizedId = getStandardizedTokenId(tokenId);
-      if (!standardizedId) {
-        throw new Error(`Unsupported token: ${tokenId}`);
-      }
-
-      const token = await prisma.token.upsert({
+      // Upsert Token
+      await tx.token.upsert({
         where: { address: standardizedId },
         update: {},
         create: { address: standardizedId },
       });
 
-      await prisma.alert.create({
-        data: {
+      // Find or create the base Alert
+      return await tx.alert.upsert({
+        where: { discordServerId_channelId_tokenId: { discordServerId: guildId, channelId, tokenId: standardizedId } },
+        update: {},
+        create: {
           channelId: channelId,
           enabled: true,
-          discordServerId: server.id,
-          tokenId: token.id,
-          priceAlert: {
-            create: {
-              direction: direction,
-              value: value,
-            },
-          },
+          discordServerId: guildId,
+          tokenId: standardizedId,
         },
       });
+    });
+
+    // Create the PriceAlert associated with the base Alert
+    await prisma.priceAlert.create({
+      data: {
+        direction: direction,
+        value: value,
+        alertId: alert.id,
+      },
     });
 
     const directionEmoji = direction === 'up' ? '📈' : '📉';
@@ -106,6 +114,20 @@ export async function createPriceAlert(
     }
   } catch (error) {
     logger.error('Error creating price alert:', error);
+    if (error.code === 'P2002') {
+      // P2002 is the error code for unique constraint violation
+      if (error.meta?.target?.includes('alertId_direction_value')) {
+        return {
+          success: false,
+          message: `You already have an identical price alert for **${tokenId}** at \`${formatPriceForDisplay(value)}\` going ${direction}.`,
+        };
+      } else if (error.meta?.target?.includes('discordServerId_channelId_tokenId')) {
+        return {
+          success: false,
+          message: `You already have a base alert for **${tokenId}** in this channel. You can add more specific price alerts to it.`,
+        };
+      }
+    }
     return {
       success: false,
       message: 'Sorry, there was an error creating the price alert. Please try again later.',
