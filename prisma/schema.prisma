@@ -46,6 +46,8 @@ model Alert {
   discordServer   DiscordServer @relation(fields: [discordServerId], references: [id])
   tokenId         String
   token           Token         @relation(fields: [tokenId], references: [id])
+
+  @@unique([discordServerId, channelId, tokenId])
 }
 
 model PriceAlert {
@@ -54,6 +56,8 @@ model PriceAlert {
   value     Float
   alertId   String         @unique
   alert     Alert          @relation("AlertToPriceAlert", fields: [alertId], references: [id])
+
+  @@unique([alertId, direction, value])
 }
 
 model VolumeAlert {
