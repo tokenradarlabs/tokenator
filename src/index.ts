@@ -9,8 +9,27 @@ import {
   ChatInputCommandInteraction,
   ApplicationCommandDataResolvable,
 } from 'discord.js';
-import { config } from './config';
+import { config, isDevelopment } from './config';
 import logger from './utils/logger';
+
+// --- Global Error Handling ---
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Application specific logging, throwing an error, or other logic here
+  // In a production environment, you might want to send this to an error tracking service.
+  // For now, we'll exit to prevent the application from running in an unstable state.
+  process.exit(1);
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  // Perform any cleanup here if necessary
+  // For example, closing database connections, flushing logs.
+  // Then, exit the process.
+  process.exit(1);
+});
+
+// --- End Global Error Handling ---
 import { startDevPriceUpdateJob } from './cron/priceUpdateJob';
 import {
   formatNumber,
