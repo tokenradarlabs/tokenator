@@ -7,3 +7,4 @@ export * from './editPriceAlert';
 export * from './alertStats';
 export * from './createVolumeAlert';
 export * from './editVolumeAlert';
+export * from './findPriceAlert';
