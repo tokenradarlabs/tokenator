@@ -127,7 +127,7 @@ async function getTokenPriceFromV3Pool(
       baseToken: baseToken.address,
       quoteToken: quoteToken.address,
     });
-    return 0;
+    throw error; // Re-throw the error for upstream handling
   }
 }
 
@@ -155,23 +155,18 @@ export async function getEthPrice(): Promise<number> {
  * Get the price of DEV token in terms of ETH and convert to USDC
  */
 export async function getDevPrice(): Promise<number> {
-  try {
-    // First get DEV/ETH price
-    const devEthPrice = await getTokenPriceFromV3Pool(
-      DEV_WETH_POOL_ADDRESS_BASE,
-      DEV,
-      WETH
-    );
+  // First get DEV/ETH price
+  const devEthPrice = await getTokenPriceFromV3Pool(
+    DEV_WETH_POOL_ADDRESS_BASE,
+    DEV,
+    WETH
+  );
 
-    // Then get ETH/USDC price
-    const ethUsdcPrice = await getEthPrice();
+  // Then get ETH/USDC price
+  const ethUsdcPrice = await getEthPrice();
 
-    // Calculate DEV price in USDC
-    return devEthPrice * ethUsdcPrice;
-  } catch (error) {
-    logger.error("Error fetching DEV price", error as Error);
-    return 0;
-  }
+  // Calculate DEV price in USDC
+  return devEthPrice * ethUsdcPrice;
 }
 
 /**
