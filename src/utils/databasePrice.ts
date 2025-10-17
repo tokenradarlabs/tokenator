@@ -37,41 +37,42 @@ export async function getLatestTokenPriceFromDatabase(tokenId: string): Promise<
       logger.warn(`No price data found in database for token: ${standardizedId}`);
       return null;
     }
-    
-    /**
-     * Upserts token price data into the database using a transaction.
-     * Ensures that the token exists before creating a price record.
-     * @param tokenAddress The unique address of the token.
-     * @param price The price of the token.
-     * @param timestamp The timestamp of the price data.
-     */
-    export async function upsertTokenPrice(tokenAddress: string, price: number, timestamp: Date): Promise<void> {
-      try {
-        await prisma.$transaction(async (tx) => {
-          // Find or create the token
-          const token = await tx.token.upsert({
-            where: { address: tokenAddress },
-            update: {},
-            create: { address: tokenAddress },
-          });
-    
-          // Create the token price record
-          await tx.tokenPrice.create({
-            data: {
-              price: price,
-              timestamp: timestamp,
-              tokenId: token.id,
-            },
-          });
-        });
-        logger.info(`[DatabasePrice] Successfully upserted price for ${tokenAddress}: ${price} (timestamp: ${timestamp.toISOString()})`);
-      } catch (error) {
-        logger.error(`Error upserting token price for ${tokenAddress}:`, error);
-        throw error; // Re-throw to allow calling function to handle
-      }
-    } catch (error) {
+  } catch (error) {
     logger.error("Error fetching token price from database:", error);
     return null;
+  }
+}
+
+/**
+ * Upserts token price data into the database using a transaction.
+ * Ensures that the token exists before creating a price record.
+ * @param tokenAddress The unique address of the token.
+ * @param price The price of the token.
+ * @param timestamp The timestamp of the price data.
+ */
+export async function upsertTokenPrice(tokenAddress: string, price: number, timestamp: Date): Promise<void> {
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Find or create the token
+      const token = await tx.token.upsert({
+        where: { address: tokenAddress },
+        update: {},
+        create: { address: tokenAddress },
+      });
+
+      // Create the token price record
+      await tx.tokenPrice.create({
+        data: {
+          price: price,
+          timestamp: timestamp,
+          tokenId: token.id,
+        },
+      });
+    });
+    logger.info(`[DatabasePrice] Successfully upserted price for ${tokenAddress}: ${price} (timestamp: ${timestamp.toISOString()})`);
+  } catch (error) {
+    logger.error(`Error upserting token price for ${tokenAddress}:`, error);
+    throw error; // Re-throw to allow calling function to handle
   }
 }
 

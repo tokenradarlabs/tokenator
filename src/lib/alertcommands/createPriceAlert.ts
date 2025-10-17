@@ -112,7 +112,7 @@ export async function createPriceAlert(
         currentPrice: null,
       };
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error creating price alert:', error);
     if (error.code === 'P2002') {
       // P2002 is the error code for unique constraint violation
