@@ -29,6 +29,11 @@ export interface ListAlertsResult {
   alerts?: AlertData[];
 }
 
+/**
+ * Lists alerts based on provided filters.
+ * @param params - Parameters for listing alerts.
+ * @returns A result object containing a list of alerts or an error message.
+ */
 export async function listAlerts(
   params: ListAlertsParams
 ): Promise<ListAlertsResult> {
@@ -165,6 +170,11 @@ export async function listAlerts(
   }
 }
 
+/**
+ * Formats a list of alerts into a human-readable string for display.
+ * @param alerts - An array of alert data.
+ * @returns A formatted string displaying the alerts.
+ */
 export function formatAlertsForDisplay(alerts: AlertData[]): string {
   let description = '';
   alerts.forEach(alert => {

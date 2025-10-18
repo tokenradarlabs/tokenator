@@ -1,6 +1,12 @@
 import prisma from '../../utils/prisma';
 import { Alert, PriceAlert, Token } from '../../generated/prisma/client';
 
+/**
+ * Finds a price alert by its ID and guild ID.
+ * @param alertId - The ID of the alert.
+ * @param guildId - The ID of the Discord guild.
+ * @returns The price alert with token ID, or null if not found.
+ */
 export async function findPriceAlertById(
   alertId: string,
   guildId: string

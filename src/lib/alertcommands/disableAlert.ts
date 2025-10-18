@@ -13,6 +13,11 @@ export interface DisableAlertResult {
   message: string;
 }
 
+/**
+ * Disables an alert or a group of alerts by type.
+ * @param params - Parameters for disabling alerts.
+ * @returns A result object indicating success or failure and a message.
+ */
 export async function disableAlert(
   params: DisableAlertParams
 ): Promise<DisableAlertResult> {

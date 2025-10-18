@@ -13,6 +13,11 @@ export interface EnableAlertResult {
   message: string;
 }
 
+/**
+ * Enables a disabled alert or a group of disabled alerts by type.
+ * @param params - Parameters for enabling alerts.
+ * @returns A result object indicating success or failure and a message.
+ */
 export async function enableAlert(
   params: EnableAlertParams
 ): Promise<EnableAlertResult> {
@@ -230,6 +235,11 @@ export type EnablePriceAlertParams = EnableAlertParams;
 export type EnablePriceAlertResult = EnableAlertResult;
 
 // Backward compatibility function that maps old enableAll boolean to new enableType
+/**
+ * Enables a disabled price alert or all disabled price alerts. (Backward compatibility function)
+ * @param params - Parameters for enabling price alerts.
+ * @returns A result object indicating success or failure and a message.
+ */
 export const enablePriceAlert = (params: EnableAlertParams | { alertId?: string; enableAll?: boolean; guildId: string; channelId: string; }): Promise<EnableAlertResult> => {
   // Handle both old and new parameter formats
   if ('enableAll' in params && params.enableAll) {

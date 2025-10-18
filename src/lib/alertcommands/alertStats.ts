@@ -21,6 +21,11 @@ export interface AlertStatsResult {
   stats?: AlertStatsData;
 }
 
+/**
+ * Retrieves statistics about alerts, including cooldown status.
+ * @param params - Parameters for retrieving alert statistics.
+ * @returns A result object containing alert statistics or an error message.
+ */
 export async function getAlertStats(
   params: AlertStatsParams
 ): Promise<AlertStatsResult> {
@@ -62,6 +67,12 @@ export async function getAlertStats(
   }
 }
 
+/**
+ * Formats the alert statistics into a human-readable message.
+ * @param stats - The alert statistics data.
+ * @param tokenId - Optional token ID for which the stats are formatted.
+ * @returns A formatted string displaying alert statistics.
+ */
 export function formatAlertStatsMessage(stats: AlertStatsData, tokenId?: string): string {
   let statusMessage = '✅ All systems normal';
   if (stats.alertsInCooldown > 0) {
