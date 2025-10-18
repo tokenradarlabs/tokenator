@@ -53,11 +53,40 @@ export async function validatePriceAlertValue(
   const bounds =
     TOKEN_PRICE_BOUNDS[standardizedId as keyof typeof TOKEN_PRICE_BOUNDS];
 
-  // Check for negative values
+  // Validate input type and basic numeric properties
+  if (priceValue === null || priceValue === undefined) {
+    return {
+      isValid: false,
+      errorMessage: 'Price value cannot be empty. Please provide a number.',
+    };
+  }
+
+  if (typeof priceValue !== 'number') {
+    return {
+      isValid: false,
+      errorMessage: `Invalid price input: "${priceValue}". Please enter a numeric value.`,
+    };
+  }
+
+  if (isNaN(priceValue)) {
+    return {
+      isValid: false,
+      errorMessage: 'Invalid price value: "NaN". Please enter a valid number.',
+    };
+  }
+
+  if (!isFinite(priceValue)) {
+    return {
+      isValid: false,
+      errorMessage: `Price value "${priceValue}" is not a finite number. Please enter a realistic numeric value.`,
+    };
+  }
+
+  // Check for non-positive values
   if (priceValue <= 0) {
     return {
       isValid: false,
-      errorMessage: `Price value must be positive. You entered: $${priceValue}`,
+      errorMessage: `Price value must be positive. You entered: $${formatPrice(priceValue)}.`,
     };
   }
 
@@ -65,16 +94,18 @@ export async function validatePriceAlertValue(
   if (priceValue < bounds.min) {
     return {
       isValid: false,
-      errorMessage: `Price value $${priceValue} is too low for ${bounds.name}. Minimum allowed: $${bounds.min}`,
+      errorMessage: `Price value $${formatPrice(priceValue)} is too low for ${
+        bounds.name
+      }. The minimum allowed is $${formatPrice(bounds.min)}.`,
     };
   }
 
   if (priceValue > bounds.max) {
     return {
       isValid: false,
-      errorMessage: `Price value $${priceValue} is too high for ${
+      errorMessage: `Price value $${formatPrice(priceValue)} is too high for ${
         bounds.name
-      }. Maximum allowed: $${formatPrice(bounds.max)}`,
+      }. The maximum allowed is $${formatPrice(bounds.max)}.`,
     };
   }
 
