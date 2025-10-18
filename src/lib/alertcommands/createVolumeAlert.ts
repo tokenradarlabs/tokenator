@@ -22,6 +22,11 @@ export interface CreateVolumeAlertResult {
   currentVolume?: number | null;
 }
 
+/**
+ * Creates a new volume alert for a given token.
+ * @param params - Parameters for creating the volume alert.
+ * @returns A result object indicating success or failure and a message.
+ */
 export async function createVolumeAlert(
   params: CreateVolumeAlertParams
 ): Promise<CreateVolumeAlertResult> {

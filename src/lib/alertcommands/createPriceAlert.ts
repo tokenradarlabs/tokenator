@@ -23,6 +23,11 @@ export interface CreatePriceAlertResult {
   currentPrice?: number | null;
 }
 
+/**
+ * Creates a new price alert for a given token.
+ * @param params - Parameters for creating the price alert.
+ * @returns A result object indicating success or failure and a message.
+ */
 export async function createPriceAlert(
   params: CreatePriceAlertParams
 ): Promise<CreatePriceAlertResult> {

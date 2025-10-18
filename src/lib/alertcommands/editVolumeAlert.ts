@@ -15,6 +15,11 @@ export interface EditVolumeAlertResult {
   message: string;
 }
 
+/**
+ * Edits an existing volume alert.
+ * @param params - Parameters for editing the volume alert.
+ * @returns A result object indicating success or failure and a message.
+ */
 export async function editVolumeAlert(
   params: EditVolumeAlertParams
 ): Promise<EditVolumeAlertResult> {

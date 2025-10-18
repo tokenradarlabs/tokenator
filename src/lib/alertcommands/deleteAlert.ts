@@ -14,6 +14,11 @@ export interface DeleteAlertResult {
   message: string;
 }
 
+/**
+ * Deletes an alert or multiple disabled alerts.
+ * @param params - Parameters for deleting alerts.
+ * @returns A result object indicating success or failure and a message.
+ */
 export async function deleteAlert(
   params: DeleteAlertParams
 ): Promise<DeleteAlertResult> {

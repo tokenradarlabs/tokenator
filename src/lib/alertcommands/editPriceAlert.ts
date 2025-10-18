@@ -16,6 +16,11 @@ export interface EditPriceAlertResult {
   message: string;
 }
 
+/**
+ * Edits an existing price alert.
+ * @param params - Parameters for editing the price alert.
+ * @returns A result object indicating success or failure and a message.
+ */
 export async function editPriceAlert(
   params: EditPriceAlertParams
 ): Promise<EditPriceAlertResult> {
