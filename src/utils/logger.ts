@@ -31,7 +31,11 @@ if (isDevelopment()) {
   });
 } else {
   // Default to stdout if no BetterStack token and not in development
-  transport = pino.destination(1); // 1 = stdout
+  transport = pino.transport({
+    target: "pino/file", // stdout
+    options: { destination: 1 }, // 1 = stdout
+    level: PINO_LOG_LEVEL || "info",
+  });
 }
 
 const logger = pino(
