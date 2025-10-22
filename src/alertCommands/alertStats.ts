@@ -62,7 +62,7 @@ export async function handleAlertStats(
     }
 
     // Handle the specific case where no alerts are found.
-    if (!result.stats || result.stats.length === 0) {
+    if (!result.stats || result.stats?.totalAlerts === 0) {
       await interaction.reply({
         content: 'No alerts found for the specified criteria. Create one using `/create-price-alert` or `/create-volume-alert`.',
         flags: 64,
