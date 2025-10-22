@@ -33,6 +33,7 @@ export async function handleAlertStats(
   const tokenId = interaction.options.getString('token') || undefined;
   const { guildId, channelId } = interaction;
 
+  // Ensure the command is used within a server channel.
   if (!guildId || !channelId) {
     await interaction.reply({
       content: 'This command can only be used in a server channel.',
@@ -42,22 +43,37 @@ export async function handleAlertStats(
   }
 
   try {
+    // Attempt to retrieve alert statistics from the database.
     const result = await getAlertStats({
       tokenId,
       guildId,
       channelId,
     });
 
-    if (!result.success || !result.stats) {
+    // Handle cases where alert statistics could not be retrieved successfully.
+    if (!result.success) {
+      // Log the error for debugging purposes.
+      logger.error(`Failed to retrieve alert stats: ${result.message}`);
       await interaction.reply({
-        content: result.message || 'Sorry, there was an error retrieving alert statistics.',
+        content: result.message || 'Sorry, there was an error retrieving alert statistics. Please try again later.',
         flags: 64,
       });
       return;
     }
 
+    // Handle the specific case where no alerts are found.
+    if (!result.stats || result.stats?.totalAlerts === 0) {
+      await interaction.reply({
+        content: 'No alerts found for the specified criteria. Create one using `/create-price-alert` or `/create-volume-alert`.',
+        flags: 64,
+      });
+      return;
+    }
+
+    // Format the retrieved statistics into a human-readable message.
     const formattedMessage = formatAlertStatsMessage(result.stats, tokenId);
     
+    // Construct and send the embed message with alert statistics.
     const embed = new EmbedBuilder()
       .setTitle(`🔔 Price Alert Statistics ${tokenId ? `(${tokenId})` : ''}`)
       .setColor(0x00ae86)
@@ -69,11 +85,13 @@ export async function handleAlertStats(
       flags: 64,
     });
 
+    // Log successful display of alert statistics.
     logger.info(`Successfully displayed alert stats for guild ${guildId}`);
   } catch (error) {
-    logger.error('Error in handleAlertStats:', error);
+    // Catch any unexpected errors during the process.
+    logger.error('Unexpected error in handleAlertStats:', error);
     await interaction.reply({
-      content: 'Sorry, there was an unexpected error. Please try again later.',
+      content: 'An unexpected error occurred while fetching alert statistics. Please try again later.',
       flags: 64,
     });
   }
