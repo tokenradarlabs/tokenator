@@ -367,5 +367,58 @@ async function main(): Promise<void> {
   }
 }
 
+interface CliArgs {
+  help: boolean;
+  // Add other CLI arguments here as needed
+}
+
+function parseArgs(args: string[]): CliArgs {
+  const parsedArgs: CliArgs = {
+    help: false,
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    switch (arg) {
+      case '-h':
+      case '--help':
+        parsedArgs.help = true;
+        break;
+      default:
+        logger.error(`Unknown argument: ${arg}.`);
+        printHelp();
+        process.exit(1);
+    }
+  }
+  return parsedArgs;
+}
+
+function printHelp(): void {
+  console.log(`
+Usage:
+  npm start [options]
+  ts-node src/index.ts [options]
+
+Options:
+  -h, --help    Display this help message.
+
+Description:
+  Tokenator is a feature-rich Discord bot for token price alerts and information.
+  It provides various slash commands within Discord for interacting with token data.
+
+  To start the bot in production mode, use 'npm start'.
+  To start the bot in development mode (with hot-reloading), use 'npm run dev'.
+  `);
+}
+
 logger.info('Bot is starting...');
+
+// Parse CLI arguments
+const cliArgs = parseArgs(process.argv.slice(2)); // Exclude 'node' and 'index.ts'
+
+if (cliArgs.help) {
+  printHelp();
+  process.exit(0);
+}
+
 main();
