@@ -35,6 +35,17 @@ export const createVolumeAlertCommand = new SlashCommandBuilder()
       .setMinValue(1)
       .setMaxValue(1000000000000) // 1 trillion max
   )
+  .addStringOption(option =>
+    option
+      .setName('timeframe')
+      .setDescription('The time frame for the volume (e.g., 24h, 7d, 30d)')
+      .setRequired(true)
+      .addChoices(
+        { name: '24 hours', value: '24h' },
+        { name: '7 days', value: '7d' },
+        { name: '30 days', value: '30d' }
+      )
+  )
   .toJSON();
 
 export async function handleCreateVolumeAlert(interaction: ChatInputCommandInteraction) {
@@ -44,30 +55,33 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     const token = interaction.options.getString('token', true);
     const direction = interaction.options.getString('direction', true) as 'up' | 'down';
     const volume = interaction.options.getNumber('volume', true);
+    const timeframe = interaction.options.getString('timeframe', true) as '24h' | '7d' | '30d';
     const guildId = interaction.guildId;
     const channelId = interaction.channelId;
 
+    const sendErrorReply = async (content: string) => {
+      if (interaction.deferred) {
+        await interaction.editReply({ content });
+      } else {
+        await interaction.reply({ content, ephemeral: true });
+      }
+    };
+
     if (!guildId) {
-      await interaction.editReply({
-        content: '❌ This command can only be used in servers, not in DMs.',
-      });
+      await sendErrorReply('❌ This command can only be used in servers, not in DMs.');
       return;
     }
 
     // Check if it's a text channel
     const channel = interaction.channel;
     if (!channel || channel.type !== ChannelType.GuildText) {
-      await interaction.editReply({
-        content: '❌ This command can only be used in text channels.',
-      });
+      await sendErrorReply('❌ This command can only be used in text channels.');
       return;
     }
 
     const standardizedTokenId = getStandardizedTokenId(token);
     if (!standardizedTokenId) {
-      await interaction.editReply({
-        content: '❌ Invalid token. Please use scout-protocol-token, bitcoin, or ethereum.',
-      });
+      await sendErrorReply('❌ Invalid token. Please use scout-protocol-token, bitcoin, or ethereum.');
       return;
     }
 
@@ -75,6 +89,7 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
       tokenId: token,
       direction,
       value: volume,
+      timeframe,
       guildId,
       channelId,
       guildName: interaction.guild?.name,

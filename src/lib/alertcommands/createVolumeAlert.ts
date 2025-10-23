@@ -14,6 +14,7 @@ export interface CreateVolumeAlertParams {
   guildId: string;
   channelId: string;
   guildName?: string;
+  timeframe: '24h' | '7d' | '30d';
 }
 
 export interface CreateVolumeAlertResult {
