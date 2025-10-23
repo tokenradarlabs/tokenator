@@ -5,7 +5,7 @@ import {
   getStandardizedTokenId,
 } from '../../utils/constants';
 import { formatNumber } from '../../utils/coinGecko';
-import { getLatestTokenVolumeFromDatabase } from '../../utils/databaseVolume';
+import { getTokenVolumeByTimeframe } from '../../utils/databaseVolume';
 
 export interface CreateVolumeAlertParams {
   tokenId: string;
@@ -69,7 +69,7 @@ export async function createVolumeAlert(
     }
 
     // Get current volume for context
-    const currentVolume = await getLatestTokenVolumeFromDatabase(standardTokenId);
+    const currentVolume = await getTokenVolumeByTimeframe(standardTokenId, timeframe);
 
     // Check if server exists, create if not
     await prisma.discordServer.upsert({

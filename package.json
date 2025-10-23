@@ -28,10 +28,13 @@
   },
   "devDependencies": {
     "@prisma/client": "^6.9.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.17.2",
+    "jest": "^30.2.0",
     "nodemon": "^2.0.15",
     "pino-pretty": "^10.3.1",
     "prisma": "^6.9.0",
+    "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
