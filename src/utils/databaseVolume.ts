@@ -2,21 +2,19 @@ import prisma from './prisma';
 import logger from './logger';
 
 /**
- * Gets the latest volume for a token from the database
+ * Gets the latest volume for a token from the database based on the specified timeframe.
  * @param tokenId The standardized token ID (e.g., 'scout-protocol-token')
- * @returns The latest volume or null if not found
+ * @param timeframe The desired timeframe for the volume ('24h', '7d', '30d')
+ * @returns The latest volume for the specified timeframe or null if not found
  */
-export async function getLatestTokenVolumeFromDatabase(
-  tokenId: string
+export async function getTokenVolumeByTimeframe(
+  tokenId: string,
+  timeframe: '24h' | '7d' | '30d'
 ): Promise<number | null> {
   try {
     const latestVolume = await prisma.tokenVolume.findFirst({
-      where: {
-        token: { address: tokenId },
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
+      where: { token: { address: tokenId } },
+      orderBy: { timestamp: 'desc' },
     });
 
     if (!latestVolume) {
@@ -24,14 +22,16 @@ export async function getLatestTokenVolumeFromDatabase(
       return null;
     }
 
-    logger.info(`[DatabaseVolume] Latest volume for ${tokenId}: ${latestVolume.volume}`);
-    return latestVolume.volume;
-
+    switch (timeframe) {
+      case '24h':
+        return latestVolume.volume24h ?? null;
+      case '7d':
+        return latestVolume.volume7d ?? null;
+      case '30d':
+        return latestVolume.volume30d ?? null;
+    }
   } catch (error) {
-    logger.error(
-      `[DatabaseVolume] Error fetching latest volume for token: ${tokenId}`,
-      error as Error
-    );
+    logger.error(`[DatabaseVolume] Error fetching ${timeframe} volume for token: ${tokenId}`, error);
     return null;
   }
 }

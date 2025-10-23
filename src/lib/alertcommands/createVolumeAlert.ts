@@ -5,7 +5,7 @@ import {
   getStandardizedTokenId,
 } from '../../utils/constants';
 import { formatNumber } from '../../utils/coinGecko';
-import { getLatestTokenVolumeFromDatabase } from '../../utils/databaseVolume';
+import { getTokenVolumeByTimeframe } from '../../utils/databaseVolume';
 
 export interface CreateVolumeAlertParams {
   tokenId: string;
@@ -14,6 +14,7 @@ export interface CreateVolumeAlertParams {
   guildId: string;
   channelId: string;
   guildName?: string;
+  timeframe: '24h' | '7d' | '30d';
 }
 
 export interface CreateVolumeAlertResult {
@@ -30,7 +31,14 @@ export interface CreateVolumeAlertResult {
 export async function createVolumeAlert(
   params: CreateVolumeAlertParams
 ): Promise<CreateVolumeAlertResult> {
-  const { tokenId, direction, value, guildId, channelId, guildName } = params;
+  const { tokenId, direction, value, guildId, channelId, guildName, timeframe } = params;
+
+  if (!['24h', '7d', '30d'].includes(timeframe)) {
+    return {
+      success: false,
+      message: '❌ **Invalid timeframe**: Timeframe must be one of \'24h\', \'7d\', or \'30d\'.',
+    };
+  }
 
   if (!isSupportedToken(tokenId)) {
     return {
@@ -61,7 +69,7 @@ export async function createVolumeAlert(
     }
 
     // Get current volume for context
-    const currentVolume = await getLatestTokenVolumeFromDatabase(standardTokenId);
+    const currentVolume = await getTokenVolumeByTimeframe(standardTokenId, timeframe);
 
     // Check if server exists, create if not
     await prisma.discordServer.upsert({
@@ -115,6 +123,7 @@ export async function createVolumeAlert(
           create: {
             direction,
             value,
+            timeframe,
           },
         },
       },
@@ -130,8 +139,9 @@ export async function createVolumeAlert(
       `**Token:** ${tokenId.toUpperCase()}\n` +
       `**Direction:** ${direction.toUpperCase()} ${directionEmoji}\n` +
       `**Threshold:** ${formatNumber(value)}\n` +
-      `**Current 24h Volume:** ${currentVolume ? formatNumber(currentVolume) : 'Unknown'}\n\n` +
-      `You'll be notified when the 24h volume ${direction === 'up' ? 'rises above' : 'drops below'} ${formatNumber(value)}.\n` +
+      `**Timeframe:** ${timeframe}\n` +
+      `**Current ${timeframe} Volume:** ${currentVolume ? formatNumber(currentVolume) : 'Unknown'}\n\n` +
+      `You'll be notified when the ${timeframe} volume ${direction === 'up' ? 'rises above' : 'drops below'} ${formatNumber(value)}.\n` +
       `*Volume alerts are checked once daily.*`;
 
     logger.info(`[VolumeAlert] Created volume alert`, {
@@ -139,6 +149,7 @@ export async function createVolumeAlert(
       tokenId: standardTokenId,
       direction,
       value,
+      timeframe,
       channelId,
       guildId,
     });
@@ -154,6 +165,7 @@ export async function createVolumeAlert(
       tokenId,
       direction,
       value,
+      timeframe,
       channelId,
       guildId,
     });
