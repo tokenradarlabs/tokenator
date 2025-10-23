@@ -31,7 +31,14 @@ export interface CreateVolumeAlertResult {
 export async function createVolumeAlert(
   params: CreateVolumeAlertParams
 ): Promise<CreateVolumeAlertResult> {
-  const { tokenId, direction, value, guildId, channelId, guildName } = params;
+  const { tokenId, direction, value, guildId, channelId, guildName, timeframe } = params;
+
+  if (!['24h', '7d', '30d'].includes(timeframe)) {
+    return {
+      success: false,
+      message: '❌ **Invalid timeframe**: Timeframe must be one of \'24h\', \'7d\', or \'30d\'.',
+    };
+  }
 
   if (!isSupportedToken(tokenId)) {
     return {
@@ -116,6 +123,7 @@ export async function createVolumeAlert(
           create: {
             direction,
             value,
+            timeframe,
           },
         },
       },
@@ -131,8 +139,9 @@ export async function createVolumeAlert(
       `**Token:** ${tokenId.toUpperCase()}\n` +
       `**Direction:** ${direction.toUpperCase()} ${directionEmoji}\n` +
       `**Threshold:** ${formatNumber(value)}\n` +
-      `**Current 24h Volume:** ${currentVolume ? formatNumber(currentVolume) : 'Unknown'}\n\n` +
-      `You'll be notified when the 24h volume ${direction === 'up' ? 'rises above' : 'drops below'} ${formatNumber(value)}.\n` +
+      `**Timeframe:** ${timeframe}\n` +
+      `**Current ${timeframe} Volume:** ${currentVolume ? formatNumber(currentVolume) : 'Unknown'}\n\n` +
+      `You'll be notified when the ${timeframe} volume ${direction === 'up' ? 'rises above' : 'drops below'} ${formatNumber(value)}.\n` +
       `*Volume alerts are checked once daily.*`;
 
     logger.info(`[VolumeAlert] Created volume alert`, {
@@ -140,6 +149,7 @@ export async function createVolumeAlert(
       tokenId: standardTokenId,
       direction,
       value,
+      timeframe,
       channelId,
       guildId,
     });
@@ -155,6 +165,7 @@ export async function createVolumeAlert(
       tokenId,
       direction,
       value,
+      timeframe,
       channelId,
       guildId,
     });

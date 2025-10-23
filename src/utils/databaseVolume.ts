@@ -6,7 +6,7 @@ import logger from './logger';
  * @param tokenId The standardized token ID (e.g., 'scout-protocol-token')
  * @returns The latest volume or null if not found
  */
-export async function getLatestTokenVolumeFromDatabase(
+export async function get24hTokenVolumeFromDatabase(
   tokenId: string
 ): Promise<number | null> {
   try {

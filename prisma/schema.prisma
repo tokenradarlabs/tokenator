@@ -60,12 +60,19 @@ model PriceAlert {
   @@unique([alertId, direction, value])
 }
 
+enum VolumeAlertTimeframe {
+  h24 @map("24h")
+  d7  @map("7d")
+  d30 @map("30d")
+}
+
 model VolumeAlert {
-  id        String         @id @default(uuid())
+  id        String               @id @default(uuid())
   direction AlertDirection
   value     Float
-  alertId   String         @unique
-  alert     Alert          @relation("AlertToVolumeAlert", fields: [alertId], references: [id])
+  timeframe VolumeAlertTimeframe @default(h24) // default to 24h for existing rows
+  alertId   String               @unique
+  alert     Alert                @relation("AlertToVolumeAlert", fields: [alertId], references: [id])
 }
 
 model TokenPrice {
@@ -81,7 +88,9 @@ model TokenPrice {
 
 model TokenVolume {
   id        String   @id @default(uuid())
-  volume    Float
+  volume    Float    @map("volume24h") // 24-hour volume
+  volume7d  Float?   // 7-day aggregated volume
+  volume30d Float?   // 30-day aggregated volume
   timestamp DateTime @default(now())
   tokenId   String
   token     Token    @relation(fields: [tokenId], references: [id])
