@@ -43,6 +43,31 @@ export async function handleCreatePriceAlert(
   const tokenId = interaction.options.getString('token-id', true);
   const { guildId, channelId } = interaction;
 
+  if (value <= 0) {
+    await interaction.reply({
+      content: 'The alert value must be a positive number.',
+      flags: 64,
+    });
+    return;
+  }
+
+  if (value > Number.MAX_SAFE_INTEGER) {
+    await interaction.reply({
+      content: 'The alert value is too large. Please enter a smaller number.',
+      flags: 64,
+    });
+    return;
+  }
+
+  const supportedTokenIds = ['scout-protocol-token', 'bitcoin', 'ethereum'];
+  if (!supportedTokenIds.includes(tokenId)) {
+    await interaction.reply({
+      content: 'Unsupported token ID. Please choose from the provided options.',
+      flags: 64,
+    });
+    return;
+  }
+
   if (!guildId) {
     await interaction.reply({
       content: 'This command can only be used in a server.',
