@@ -11,7 +11,7 @@ export async function findVolumeAlertById(
   alertId: string,
   guildId: string
 ): Promise<(VolumeAlert & { tokenId: string }) | null> {
-  const alert = await prisma.alert.findUnique({
+  const alert = await prisma.alert.findFirst({
     where: {
       id: alertId,
       discordServerId: guildId,
