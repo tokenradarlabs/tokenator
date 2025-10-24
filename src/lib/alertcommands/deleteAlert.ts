@@ -74,7 +74,7 @@ export async function deleteAlert(
           await prisma.alert.delete({ where: { id: alert.id } });
           deletedCount++;
         } catch (err) {
-          logger.error(`Error deleting alert ${alert.id}:`, err);
+          logger.error(err, `Error deleting alert ${alert.id}:`);
         }
       }
       return {
@@ -96,6 +96,13 @@ export async function deleteAlert(
         },
       });
 
+      if (!alert) {
+        return {
+          success: false,
+          message: `No alert found with ID: \`${alertId}\`.`,
+        };
+      }
+
       if (alert.priceAlert) {
         await prisma.priceAlert.delete({ where: { id: alert.priceAlert.id } });
       }
@@ -113,7 +120,7 @@ export async function deleteAlert(
       message: 'No valid delete operation performed.',
     };
   } catch (error) {
-    logger.error('Error deleting alert:', error);
+    logger.error(error, 'Error deleting alert:');
     return {
       success: false,
       message: 'Failed to delete alert. Please try again later.',

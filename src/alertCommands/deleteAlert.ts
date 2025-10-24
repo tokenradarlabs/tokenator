@@ -4,7 +4,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import logger from "../utils/logger";
-import { deleteAlert, findPriceAlert, findVolumeAlert } from "../lib/alertcommands";
+import { deleteAlert } from "../lib/alertcommands";
 
 export const deleteAlertCommand = new SlashCommandBuilder()
   .setName("delete-alert")
@@ -61,8 +61,8 @@ export async function handleDeleteAlert(
 
   try {
     if (alertId) {
-      const priceAlert = await findPriceAlert(alertId);
-      const volumeAlert = await findVolumeAlert(alertId);
+      const priceAlert = await findPriceAlertById(alertId, guildId);
+      const volumeAlert = await findVolumeAlertById(alertId, guildId);
 
       if (!priceAlert && !volumeAlert) {
         await interaction.reply({
@@ -70,10 +70,8 @@ export async function handleDeleteAlert(
           flags: 64,
         });
         return;
-      }
-    }
-
-    const result = await deleteAlert({
+          }
+      }    const result = await deleteAlert({
       alertId: alertId || undefined,
       deleteDisabled: deleteDisabled || undefined,
       type: type || undefined,
@@ -86,10 +84,10 @@ export async function handleDeleteAlert(
       flags: 64,
     });
   } catch (error) {
-    logger.error('Error in handleDeleteAlert:', error);
+    logger.error(error, 'Error in handleDeleteAlert:');
     await interaction.reply({
       content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
     });
-  }\n
+  }
 }
