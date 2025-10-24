@@ -101,11 +101,12 @@ async function disableEnabledAlertsByType(
       },
     });
 
+    // If no enabled alerts are found for the specified type, it's a no-op.
     if (enabledAlerts.length === 0) {
       const typeText = disableType === 'all' ? '' : ` ${disableType}`;
       return {
         success: true,
-        message: `No enabled${typeText} alerts found in this channel.`,
+        message: `No enabled${typeText} alerts found in this channel to disable. No changes were made.`,
       };
     }
 
@@ -177,11 +178,12 @@ async function disableSpecificAlert(
       };
     }
 
+    // If the alert is already disabled, it's a no-op and we return a success status with an informative message.
     if (!alert.enabled) {
-      logger.info(`Alert ${alertId} is already disabled.`);
+      logger.info(`Alert ${alertId} is already disabled. No action taken.`);
       return {
         success: true,
-        message: `Alert with ID: \`${alertId}\` is already disabled.`,
+        message: `Alert with ID: \`${alertId}\` is already disabled. No changes were made.`,
       };
     }
 
