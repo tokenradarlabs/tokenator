@@ -95,12 +95,7 @@ export async function deleteAlert(
           volumeAlert: true,
         },
       });
-      if (!alert) {
-        return {
-          success: false,
-          message: 'Alert not found for the given ID in this channel.',
-        };
-      }
+
       if (alert.priceAlert) {
         await prisma.priceAlert.delete({ where: { id: alert.priceAlert.id } });
       }
