@@ -4,7 +4,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import logger from "../utils/logger";
-import { deleteAlert } from "../lib/alertcommands";
+import { deleteAlert, findPriceAlertById, findVolumeAlertById } from "../lib/alertcommands";
 
 export const deleteAlertCommand = new SlashCommandBuilder()
   .setName("delete-alert")
@@ -51,7 +51,27 @@ export async function handleDeleteAlert(
     return;
   }
 
+  if (alertId && !alertId.match(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)) {
+    await interaction.reply({
+      content: "Invalid alert ID format. Please provide a valid UUID.",
+      flags: 64,
+    });
+    return;
+  }
+
   try {
+    if (alertId) {
+      const priceAlert = await findPriceAlertById(alertId, guildId);
+      const volumeAlert = await findVolumeAlertById(alertId, guildId);
+
+      if (!priceAlert && !volumeAlert) {
+        await interaction.reply({
+          content: `No alert found with ID: \`${alertId}\`.`,
+          flags: 64,
+        });
+        return;
+      }
+    }
     const result = await deleteAlert({
       alertId: alertId || undefined,
       deleteDisabled: deleteDisabled || undefined,
@@ -65,7 +85,7 @@ export async function handleDeleteAlert(
       flags: 64,
     });
   } catch (error) {
-    logger.error('Error in handleDeleteAlert:', error);
+    logger.error(error, 'Error in handleDeleteAlert:');
     await interaction.reply({
       content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
