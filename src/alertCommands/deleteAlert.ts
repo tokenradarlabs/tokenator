@@ -4,7 +4,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import logger from "../utils/logger";
-import { deleteAlert } from "../lib/alertcommands";
+import { deleteAlert, findPriceAlertById, findVolumeAlertById } from "../lib/alertcommands";
 
 export const deleteAlertCommand = new SlashCommandBuilder()
   .setName("delete-alert")
@@ -70,8 +70,9 @@ export async function handleDeleteAlert(
           flags: 64,
         });
         return;
-          }
-      }    const result = await deleteAlert({
+      }
+    }
+    const result = await deleteAlert({
       alertId: alertId || undefined,
       deleteDisabled: deleteDisabled || undefined,
       type: type || undefined,
