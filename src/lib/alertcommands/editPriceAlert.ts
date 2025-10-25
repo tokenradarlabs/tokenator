@@ -9,6 +9,7 @@ export interface EditPriceAlertParams {
   newValue?: number;
   guildId: string;
   channelId: string;
+  tokenId: string;
 }
 
 export interface EditPriceAlertResult {
@@ -24,7 +25,7 @@ export interface EditPriceAlertResult {
 export async function editPriceAlert(
   params: EditPriceAlertParams
 ): Promise<EditPriceAlertResult> {
-  const { alertId, newDirection, newValue, guildId, channelId } = params;
+  const { alertId, newDirection, newValue, guildId, channelId, tokenId } = params;
 
   if (!newDirection && (newValue === null || newValue === undefined)) {
     return {
@@ -42,7 +43,6 @@ export async function editPriceAlert(
       },
       include: {
         priceAlert: true,
-        token: true,
       },
     });
 
@@ -53,38 +53,19 @@ export async function editPriceAlert(
       };
     }
 
-    if (newValue !== null && newValue !== undefined) {
-      const directionToValidate = newDirection || alert.priceAlert.direction;
-      const tokenAddress = alert.token.address;
+    const directionToValidate = newDirection || alert.priceAlert.direction;
+    const valueToValidate = newValue ?? alert.priceAlert.value;
 
-      const validationResult = await validatePriceAlertValue(
-        tokenAddress,
-        newValue,
-        directionToValidate
-      );
-      if (!validationResult.isValid) {
-        return {
-          success: false,
-          message: `❌ **Invalid price value**: ${validationResult.errorMessage}`,
-        };
-      }
-    }
-
-    if (newDirection && (newValue === null || newValue === undefined)) {
-      const tokenAddress = alert.token.address;
-      const currentValue = alert.priceAlert.value;
-
-      const validationResult = await validatePriceAlertValue(
-        tokenAddress,
-        currentValue,
-        newDirection
-      );
-      if (!validationResult.isValid) {
-        return {
-          success: false,
-          message: `❌ **Invalid direction change**: ${validationResult.errorMessage}`,
-        };
-      }
+    const validationResult = await validatePriceAlertValue(
+      tokenId,
+      valueToValidate,
+      directionToValidate
+    );
+    if (!validationResult.isValid) {
+      return {
+        success: false,
+        message: `❌ **Invalid price alert**: ${validationResult.errorMessage}`,
+      };
     }
 
     const updateData: { direction?: AlertDirection; value?: number } = {};
