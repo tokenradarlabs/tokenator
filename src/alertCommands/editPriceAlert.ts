@@ -73,35 +73,6 @@ export async function handleEditPriceAlert(
 
   const tokenId = existingAlert.tokenId;
 
-  if (newValue !== null) {
-    const standardizedTokenId = getStandardizedTokenId(tokenId);
-
-    if (!standardizedTokenId) {
-      await interaction.reply({
-        content: `Unsupported token for price validation: ${tokenId}`,
-        flags: 64,
-      });
-      return;
-    }
-
-    // If newDirection is not provided, use the existing alert's direction for validation
-    const directionForValidation = newDirection || existingAlert.direction;
-
-    const validationResult = await validatePriceAlertValue(
-      standardizedTokenId,
-      newValue,
-      directionForValidation
-    );
-
-    if (!validationResult.isValid) {
-      await interaction.reply({
-        content: `Invalid price value: ${validationResult.errorMessage}`,
-        flags: 64,
-      });
-      return;
-    }
-  }
-
   try {
     const result = await editPriceAlert({
       alertId,
@@ -109,6 +80,7 @@ export async function handleEditPriceAlert(
       newValue: newValue || undefined,
       guildId,
       channelId,
+      tokenId,
     });
 
     await interaction.reply({
