@@ -40,6 +40,10 @@ export async function handleEditVolumeAlert(
   const newValue = interaction.options.getNumber('value');
   const { guildId, channelId } = interaction;
 
+  logger.debug(
+    `handleEditVolumeAlert: alertId=${alertId}, newDirection=${newDirection}, newValue=${newValue}, guildId=${guildId}, channelId=${channelId}`
+  );
+
   if (!guildId || !channelId) {
     await interaction.reply({
       content: 'This command can only be used in a server channel.',
@@ -48,7 +52,16 @@ export async function handleEditVolumeAlert(
     return;
   }
 
+  if (newValue !== null && (newValue <= 0 || isNaN(newValue))) {
+    await interaction.reply({
+      content: 'The volume value must be a positive number.',
+      flags: 64,
+    });
+    return;
+  }
+
   try {
+    logger.debug(`Attempting to edit volume alert with ID: ${alertId}`);
     const result = await editVolumeAlert({
       alertId,
       newDirection: newDirection || undefined,
@@ -57,6 +70,7 @@ export async function handleEditVolumeAlert(
       channelId,
     });
 
+    logger.debug(`Volume alert edit result: ${result.message}`);
     await interaction.reply({
       content: result.message,
       flags: 64,
