@@ -11,8 +11,8 @@ export interface ListAlertsParams {
   alertType?: string;
   tokenAddress?: string;
   enabledStatus?: string;
-  page: number;
-  limit: number;
+  page?: number;
+  limit?: number;
 }
 
 export interface AlertData {
@@ -42,107 +42,46 @@ export interface ListAlertsResult {
 export async function listAlerts(
   params: ListAlertsParams
 ): Promise<ListAlertsResult> {
-  const { guildId, channelId, direction, alertType, tokenAddress, enabledStatus, page, limit } = params;
+  const { guildId, channelId, direction, alertType, tokenAddress, enabledStatus, page: pageParam, limit: limitParam } = params;
 
-  const take = Math.min(Math.max(1, limit), 50); // Ensure limit is between 1 and 50
-  const skip = (Math.max(1, page) - 1) * take;
+  const page = typeof pageParam === 'number' ? Math.max(1, pageParam) : 1;
+  const effectiveLimit = typeof limitParam === 'number' ? Math.min(Math.max(1, limitParam), 50) : 10;
+  const skip = (page - 1) * effectiveLimit;
 
   try {
-    const baseWhereClause: any = {
+    let whereClause: any = {
       discordServerId: guildId,
       channelId: channelId,
     };
 
     if (tokenAddress) {
-      baseWhereClause.token = { address: tokenAddress };
+      whereClause.token = { address: tokenAddress };
     }
 
     if (enabledStatus !== null && enabledStatus !== undefined) {
-      baseWhereClause.enabled = enabledStatus === 'true';
+      whereClause.enabled = enabledStatus === 'true';
     }
 
-    let alerts: any[] = [];
-    let totalAlerts = 0;
+    if (alertType === 'price') {
+      whereClause.priceAlert = direction ? { direction } : { isNot: null };
+    } else if (alertType === 'volume') {
+      whereClause.volumeAlert = direction ? { direction } : { isNot: null };
+    } else { // all or undefined
+      whereClause.OR = direction
+        ? [{ priceAlert: { direction } }, { volumeAlert: { direction } }]
+        : [{ priceAlert: { isNot: null } }, { volumeAlert: { isNot: null } }];
+    }
 
-    // Determine which alert types to fetch
-    const shouldFetchPrice = !alertType || alertType === 'price' || alertType === 'all';
-    const shouldFetchVolume = !alertType || alertType === 'volume' || alertType === 'all';
-
-    // Fetch price alerts
-    if (shouldFetchPrice) {
-      const priceWhereClause: any = {
-        ...baseWhereClause,
-      };
-
-      // Add priceAlert filter - either just exists, or exists with specific direction
-      if (direction) {
-        priceWhereClause.priceAlert = {
-          direction: direction,
-        };
-      } else {
-        priceWhereClause.priceAlert = { 
-          isNot: null 
-        };
-      }
-
-      const priceAlerts = await prisma.alert.findMany({
-        where: priceWhereClause,
-        include: {
-          priceAlert: true,
-          token: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+    const [alerts, totalAlerts] = await Promise.all([
+      prisma.alert.findMany({
+        where: whereClause,
+        include: { priceAlert: true, volumeAlert: true, token: true },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip,
-        take,
-      });
-
-      const priceAlertCount = await prisma.alert.count({
-        where: priceWhereClause,
-      });
-
-      alerts.push(...priceAlerts);
-      totalAlerts += priceAlertCount;
-    }
-
-    // Fetch volume alerts
-    if (shouldFetchVolume) {
-      const volumeWhereClause: any = {
-        ...baseWhereClause,
-      };
-
-      // Add volumeAlert filter - either just exists, or exists with specific direction
-      if (direction) {
-        volumeWhereClause.volumeAlert = {
-          direction: direction,
-        };
-      } else {
-        volumeWhereClause.volumeAlert = { 
-          isNot: null 
-        };
-      }
-
-      const volumeAlerts = await prisma.alert.findMany({
-        where: volumeWhereClause,
-        include: {
-          volumeAlert: true,
-          token: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        skip,
-        take,
-      });
-
-      const volumeAlertCount = await prisma.alert.count({
-        where: volumeWhereClause,
-      });
-
-      alerts.push(...volumeAlerts);
-      totalAlerts += volumeAlertCount;
-    }
+        take: effectiveLimit,
+      }),
+      prisma.alert.count({ where: whereClause }),
+    ]);
 
     if (alerts.length === 0) {
       return {
@@ -150,7 +89,7 @@ export async function listAlerts(
         message: 'No alerts found for this channel with the specified filters.',
         alerts: [],
         page,
-        limit,
+        limit: effectiveLimit,
         total: totalAlerts,
       };
     }
@@ -187,7 +126,7 @@ export async function listAlerts(
       success: true,
       alerts: alertData,
       page,
-      limit,
+      limit: effectiveLimit,
       total: totalAlerts,
     };
   } catch (error) {
@@ -196,7 +135,7 @@ export async function listAlerts(
       success: false,
       message: 'Sorry, there was an error listing the alerts.',
       page,
-      limit,
+      limit: effectiveLimit,
       total: 0,
     };
   }
