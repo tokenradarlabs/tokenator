@@ -44,6 +44,14 @@ export async function handleEnablePriceAlert(
     return;
   }
 
+  if (!alertId && !enableType) {
+    await interaction.reply({
+      content: 'Please provide either an alert ID or an enable type (all, price, or volume).',
+      flags: 64,
+    });
+    return;
+  }
+
   try {
     const result = await enablePriceAlert({
       alertId: alertId || undefined,
@@ -52,10 +60,7 @@ export async function handleEnablePriceAlert(
       channelId,
     });
 
-    await interaction.reply({
-      content: result.message,
-      flags: 64,
-    });
+    if (result.message.includes(\'already enabled\') || result.message.includes(\'no changes needed\')) {\n      await interaction.reply({\n        content: `Alert with ID \`${alertId}\` is already enabled. No changes were made.`,\n        flags: 64,\n      });\n    } else {\n      await interaction.reply({\n        content: result.message,\n        flags: 64,\n      });\n    }
   } catch (error) {
     logger.error('Error in handleEnablePriceAlert:', error);
     await interaction.reply({
