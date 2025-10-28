@@ -48,6 +48,21 @@ export const listAlertsCommand = new SlashCommandBuilder()
       .setRequired(false)
       .addChoices({ name: "Enabled", value: "true" }, { name: "Disabled", value: "false" }),
   )
+  .addIntegerOption((option) =>
+    option
+      .setName("page")
+      .setDescription("Page number to display (defaults to 1)")
+      .setRequired(false)
+      .setMinValue(1),
+  )
+  .addIntegerOption((option) =>
+    option
+      .setName("limit")
+      .setDescription("Number of alerts per page (defaults to 10, max 50)")
+      .setRequired(false)
+      .setMinValue(1)
+      .setMaxValue(50),
+  )
   .toJSON();
 
 export async function handleListAlerts(
@@ -60,6 +75,8 @@ export async function handleListAlerts(
   const alertType = interaction.options.getString("type");
   const tokenAddress = interaction.options.getString("token");
   const enabledStatus = interaction.options.getString("enabled");
+  const page = interaction.options.getInteger("page") || 1;
+  const limit = interaction.options.getInteger("limit") || 10;
 
   if (!guildId || !channelId) {
     await interaction.reply({
@@ -77,6 +94,8 @@ export async function handleListAlerts(
       alertType: alertType || undefined,
       tokenAddress: tokenAddress || undefined,
       enabledStatus: enabledStatus || undefined,
+      page,
+      limit,
     });
 
     if (!result.success) {
@@ -101,7 +120,11 @@ export async function handleListAlerts(
       .setTimestamp();
 
     const description = formatAlertsForDisplay(result.alerts);
-    embed.setDescription(description);
+    let footerText = `Page ${result.page} of ${Math.ceil(result.total / result.limit)} (Total: ${result.total} alerts)`;
+    if (result.message) {
+      footerText = `${result.message} | ${footerText}`;
+    }
+    embed.setDescription(description).setFooter({ text: footerText });
 
     await interaction.reply({ embeds: [embed] });
   } catch (error) {

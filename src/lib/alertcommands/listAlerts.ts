@@ -11,6 +11,8 @@ export interface ListAlertsParams {
   alertType?: string;
   tokenAddress?: string;
   enabledStatus?: string;
+  page: number;
+  limit: number;
 }
 
 export interface AlertData {
@@ -27,6 +29,9 @@ export interface ListAlertsResult {
   success: boolean;
   message?: string;
   alerts?: AlertData[];
+  page: number;
+  limit: number;
+  total: number;
 }
 
 /**
@@ -37,7 +42,10 @@ export interface ListAlertsResult {
 export async function listAlerts(
   params: ListAlertsParams
 ): Promise<ListAlertsResult> {
-  const { guildId, channelId, direction, alertType, tokenAddress, enabledStatus } = params;
+  const { guildId, channelId, direction, alertType, tokenAddress, enabledStatus, page, limit } = params;
+
+  const take = Math.min(Math.max(1, limit), 50); // Ensure limit is between 1 and 50
+  const skip = (Math.max(1, page) - 1) * take;
 
   try {
     const baseWhereClause: any = {
@@ -54,6 +62,7 @@ export async function listAlerts(
     }
 
     let alerts: any[] = [];
+    let totalAlerts = 0;
 
     // Determine which alert types to fetch
     const shouldFetchPrice = !alertType || alertType === 'price' || alertType === 'all';
@@ -85,9 +94,16 @@ export async function listAlerts(
         orderBy: {
           createdAt: 'desc',
         },
+        skip,
+        take,
+      });
+
+      const priceAlertCount = await prisma.alert.count({
+        where: priceWhereClause,
       });
 
       alerts.push(...priceAlerts);
+      totalAlerts += priceAlertCount;
     }
 
     // Fetch volume alerts
@@ -116,9 +132,16 @@ export async function listAlerts(
         orderBy: {
           createdAt: 'desc',
         },
+        skip,
+        take,
+      });
+
+      const volumeAlertCount = await prisma.alert.count({
+        where: volumeWhereClause,
       });
 
       alerts.push(...volumeAlerts);
+      totalAlerts += volumeAlertCount;
     }
 
     if (alerts.length === 0) {
@@ -126,6 +149,9 @@ export async function listAlerts(
         success: true,
         message: 'No alerts found for this channel with the specified filters.',
         alerts: [],
+        page,
+        limit,
+        total: totalAlerts,
       };
     }
 
@@ -160,12 +186,18 @@ export async function listAlerts(
     return {
       success: true,
       alerts: alertData,
+      page,
+      limit,
+      total: totalAlerts,
     };
   } catch (error) {
     logger.error('Error listing alerts:', error);
     return {
       success: false,
       message: 'Sorry, there was an error listing the alerts.',
+      page,
+      limit,
+      total: 0,
     };
   }
 }
