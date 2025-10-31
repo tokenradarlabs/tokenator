@@ -2,12 +2,12 @@ import { z } from 'zod';
 import 'dotenv/config';
 
 const envSchema = z.object({
-  DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN is required'),
-  COINGECKO_API_KEY: z.string().min(1, 'COINGECKO_API_KEY is required'),
-  ANKR_API_KEY: z.string().min(1, 'ANKR_API_KEY is required'),
-  DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL'),
+  DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN is required').describe('Discord bot token for authentication'),
+  COINGECKO_API_KEY: z.string().min(1, 'COINGECKO_API_KEY is required').describe('CoinGecko API key for cryptocurrency data'),
+  ANKR_API_KEY: z.string().min(1, 'ANKR_API_KEY is required').describe('Ankr API key for blockchain data'),
+  DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL').describe('Database connection URL'),
 
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development').describe('Application environment'),
 });
 
 function validateEnvironment() {
@@ -18,7 +18,9 @@ function validateEnvironment() {
     if (error instanceof z.ZodError) {
       const errorMessages = error.errors.map(err => {
         const path = err.path.join('.');
-        return `${path}: ${err.message}`;
+        const fieldSchema = envSchema.shape[path as keyof typeof envSchema.shape];
+        const description = fieldSchema && 'description' in fieldSchema._def ? fieldSchema._def.description : '';
+        return `${path}: ${err.message}${description ? ` (${description})` : ''}`;
       });
 
       console.error('❌ Environment validation failed:');
