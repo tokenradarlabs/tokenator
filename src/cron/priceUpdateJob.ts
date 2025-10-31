@@ -770,6 +770,9 @@ async function updateVolumeMetrics(client: Client) {
   }
 }
 
+let isMarketMetricsJobRunning = false;
+let isVolumeMetricsJobRunning = false;
+
 export function startDevPriceUpdateJob(client: Client) {
   Promise.all([
     cleanupOrphanedAlerts(client),
@@ -782,13 +785,22 @@ export function startDevPriceUpdateJob(client: Client) {
   try {
     cron.schedule(
       '* * * * *',
-      () => {
-        updateMarketMetrics(client).catch(error => {
+      async () => {
+        if (isMarketMetricsJobRunning) {
+          logger.info('[CronJob] Market metrics update job already running, skipping this interval.');
+          return;
+        }
+        isMarketMetricsJobRunning = true;
+        try {
+          await updateMarketMetrics(client);
+        } catch (error) {
           logger.error(
             `[CronJob] Error running scheduled market metrics update:`,
             error
           );
-        });
+        } finally {
+          isMarketMetricsJobRunning = false;
+        }
       },
       {
         timezone: 'UTC',
@@ -821,13 +833,22 @@ export function startDevPriceUpdateJob(client: Client) {
   try {
     cron.schedule(
       '0 0 * * *',
-      () => {
-        updateVolumeMetrics(client).catch(error => {
+      async () => {
+        if (isVolumeMetricsJobRunning) {
+          logger.info('[CronJob] Volume metrics update job already running, skipping this interval.');
+          return;
+        }
+        isVolumeMetricsJobRunning = true;
+        try {
+          await updateVolumeMetrics(client);
+        } catch (error) {
           logger.error(
             `[CronJob] Error running scheduled volume metrics update:`,
             error
           );
-        });
+        } finally {
+          isVolumeMetricsJobRunning = false;
+        }
       },
       {
         timezone: 'UTC',
