@@ -27,70 +27,80 @@ export interface PriceValidationResult {
   isValid: boolean;
   errorMessage?: string;
   currentPrice?: number;
+  parsedPriceValue?: number; // Added for clarity when parsing string inputs
 }
 
 /**
- * Validates a price alert value against reasonable bounds and market conditions
- * @param tokenId The token identifier (standardized ID)
- * @param priceValue The price value to validate
- * @param direction The alert direction ("up" or "down")
- * @returns Validation result with error message if invalid
+ * Internal helper to validate basic numeric properties of an input price.
+ * Handles NaN, non-finite numbers, negative numbers, and attempts to parse string inputs.
+ * @param inputPrice The raw input price, which could be a number or a string.
+ * @returns A PriceValidationResult indicating validity and a parsed number if successful.
  */
-export async function validatePriceAlertValue(
-  tokenId: string,
-  priceValue: number,
-  direction: 'up' | 'down'
-): Promise<PriceValidationResult> {
-  // Get standardized token ID
-  const standardizedId = getStandardizedTokenId(tokenId);
-  if (!standardizedId || !(standardizedId in TOKEN_PRICE_BOUNDS)) {
-    return {
-      isValid: false,
-      errorMessage: `Unsupported token: ${tokenId}`,
-    };
-  }
-
-  const bounds =
-    TOKEN_PRICE_BOUNDS[standardizedId as keyof typeof TOKEN_PRICE_BOUNDS];
-
-  // Validate input type and basic numeric properties
-  if (priceValue === null || priceValue === undefined) {
+export function _validateNumericInput(inputPrice: number | string | null | undefined): PriceValidationResult {
+  if (inputPrice === null || inputPrice === undefined) {
     return {
       isValid: false,
       errorMessage: 'Price value cannot be empty. Please provide a number.',
     };
   }
 
-  if (typeof priceValue !== 'number') {
+  let parsedPrice: number;
+
+  if (typeof inputPrice === 'string') {
+    // Attempt to parse string to number
+    parsedPrice = parseFloat(inputPrice);
+    if (isNaN(parsedPrice)) {
+      return {
+        isValid: false,
+        errorMessage: `Invalid price input: "${inputPrice}". Please enter a valid numeric value.`,
+      };
+    }
+  } else if (typeof inputPrice === 'number') {
+    parsedPrice = inputPrice;
+  } else {
     return {
       isValid: false,
-      errorMessage: `Invalid price input: "${priceValue}". Please enter a numeric value.`,
+      errorMessage: `Invalid price input type: "${typeof inputPrice}". Please enter a numeric value.`,
     };
   }
 
-  if (isNaN(priceValue)) {
+  if (isNaN(parsedPrice)) {
     return {
       isValid: false,
       errorMessage: 'Invalid price value: "NaN". Please enter a valid number.',
     };
   }
 
-  if (!isFinite(priceValue)) {
+  if (!isFinite(parsedPrice)) {
     return {
       isValid: false,
-      errorMessage: `Price value "${priceValue}" is not a finite number. Please enter a realistic numeric value.`,
+      errorMessage: `Price value "${parsedPrice}" is not a finite number. Please enter a realistic numeric value.`,
     };
   }
 
   // Check for non-positive values
-  if (priceValue <= 0) {
+  if (parsedPrice <= 0) {
     return {
       isValid: false,
-      errorMessage: `Price value must be positive. You entered: $${formatPrice(priceValue)}.`,
+      errorMessage: `Price value must be positive. You entered: $${formatPrice(parsedPrice)}.`,
     };
   }
 
-  // Check against absolute bounds
+  return { isValid: true, parsedPriceValue: parsedPrice };
+}
+
+/**
+ * Internal helper to check if a price value is within the predefined absolute bounds for a token.
+ * @param standardizedId The standardized token identifier.
+ * @param priceValue The numeric price value to check.
+ * @param bounds The min/max bounds for the token.
+ * @returns A PriceValidationResult indicating validity.
+ */
+export function _checkAbsoluteBounds(
+  standardizedId: string,
+  priceValue: number,
+  bounds: { min: number; max: number; name: string }
+): PriceValidationResult {
   if (priceValue < bounds.min) {
     return {
       isValid: false,
@@ -107,6 +117,46 @@ export async function validatePriceAlertValue(
         bounds.name
       }. The maximum allowed is $${formatPrice(bounds.max)}.`,
     };
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Validates a price alert value against reasonable bounds and market conditions
+ * @param tokenId The token identifier (standardized ID)
+ * @param priceValue The price value to validate
+ * @param direction The alert direction ("up" or "down")
+ * @returns Validation result with error message if invalid
+ */
+export async function validatePriceAlertValue(
+  tokenId: string,
+  priceValue: number | string, // Allow string input
+  direction: 'up' | 'down'
+): Promise<PriceValidationResult> {
+  // Get standardized token ID
+  const standardizedId = getStandardizedTokenId(tokenId);
+  if (!standardizedId || !(standardizedId in TOKEN_PRICE_BOUNDS)) {
+    return {
+      isValid: false,
+      errorMessage: `Unsupported token: ${tokenId}`,
+    };
+  }
+
+  const bounds =
+    TOKEN_PRICE_BOUNDS[standardizedId as keyof typeof TOKEN_PRICE_BOUNDS];
+
+  // Validate input type and basic numeric properties using the helper
+  const numericValidation = _validateNumericInput(priceValue);
+  if (!numericValidation.isValid) {
+    return numericValidation;
+  }
+  const validatedPriceValue = numericValidation.parsedPriceValue!;
+
+  // Check against absolute bounds using the helper
+  const boundsValidation = _checkAbsoluteBounds(standardizedId, validatedPriceValue, bounds);
+  if (!boundsValidation.isValid) {
+    return boundsValidation;
   }
 
   // Get current price for context validation
@@ -136,7 +186,7 @@ export async function validatePriceAlertValue(
   // If we have current price, do additional validation
   if (currentPrice !== null) {
     const priceDifferenceRatio =
-      Math.abs(priceValue - currentPrice) / currentPrice;
+      Math.abs(validatedPriceValue - currentPrice) / currentPrice;
     const maxDeviationRatio = 10; // Allow alerts up to 10x current price or 1/10th
 
     // Check for extreme deviations from current price
@@ -147,7 +197,7 @@ export async function validatePriceAlertValue(
       return {
         isValid: false,
         errorMessage: `Price value $${formatPrice(
-          priceValue
+          validatedPriceValue
         )} seems unrealistic compared to current price of $${formatPrice(
           currentPrice
         )}. Consider a value between $${suggestedMin} and $${suggestedMax}.`,
@@ -156,11 +206,11 @@ export async function validatePriceAlertValue(
     }
 
     // Warn about alerts that might never trigger
-    if (direction === 'up' && priceValue <= currentPrice) {
+    if (direction === 'up' && validatedPriceValue <= currentPrice) {
       return {
         isValid: false,
         errorMessage: `"Up" alert price $${formatPrice(
-          priceValue
+          validatedPriceValue
         )} should be higher than current price of $${formatPrice(
           currentPrice
         )}`,
@@ -168,11 +218,11 @@ export async function validatePriceAlertValue(
       };
     }
 
-    if (direction === 'down' && priceValue >= currentPrice) {
+    if (direction === 'down' && validatedPriceValue >= currentPrice) {
       return {
         isValid: false,
         errorMessage: `"Down" alert price $${formatPrice(
-          priceValue
+          validatedPriceValue
         )} should be lower than current price of $${formatPrice(currentPrice)}`,
         currentPrice,
       };
