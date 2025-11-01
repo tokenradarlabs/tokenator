@@ -2,6 +2,60 @@
 
 This document explains how to use the Tokenator Discord bot.
 
+## Quickstart
+
+This section provides a quick guide to get the Tokenator bot running and interacting with its core features.
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/tokenradarlabs/tokenator.git
+    cd tokenator
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+### Running the Bot
+
+To start the Tokenator bot and connect it to Discord:
+
+```bash
+npm install
+ts-node src/index.ts
+```
+Once the bot is running and invited to your Discord server (guild), you can interact with it using Discord slash commands. Commands are not invoked by passing arguments to `ts-node src/index.ts`.
+
+### Example Alert Commands
+
+Here are a few examples of how to create and list alerts using Discord slash commands. These commands interact with the logic defined in `src/alertCommands/`.
+
+*   **Create a price alert:**
+    ```
+    /create-price-alert token-id:bitcoin direction:up value:70000
+    ```
+    *(This command uses the logic from `src/alertCommands/createPriceAlert.ts`)*
+
+*   **Create a volume alert:**
+    ```
+    /create-volume-alert token:ethereum direction:up volume:100000000 timeframe:24h
+    ```
+    **Note on `timeframe`:** The `timeframe` parameter is required for volume alerts and accepts the following values: `24h`, `7d`, `30d`.
+    *(This command uses the logic from `src/alertCommands/createVolumeAlert.ts`)*
+
+*   **List all alerts:**
+    ```
+    /list-alerts
+    ```
+    *(This command uses the logic from `src/alertCommands/listAlerts.ts`)*
+
+### Troubleshooting
+
+If slash commands do not appear in your Discord server after starting the bot, ensure the bot has been invited with the necessary permissions and that application commands have been registered. Typically, inviting the bot with the `applications.commands` scope will handle registration automatically. If issues persist, restarting the bot process might help.
+
+
 ## General Commands
 
 ### `/ping`
