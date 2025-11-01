@@ -18,37 +18,42 @@ This section provides a quick guide to get the Tokenator bot running and interac
     npm install
     ```
 
-### Running CLI Commands
+### Running the Bot
 
-You can run Tokenator's CLI commands using `ts-node` directly on `src/index.ts`.
-
-**Example:**
+To start the Tokenator bot and connect it to Discord:
 
 ```bash
-ts-node src/index.ts <command> [arguments]
+npm install
+ts-node src/index.ts
 ```
+Once the bot is running and invited to your Discord server (guild), you can interact with it using Discord slash commands. Commands are not invoked by passing arguments to `ts-node src/index.ts`.
 
 ### Example Alert Commands
 
-Here are a few examples of how to create and list alerts. These commands interact with the logic defined in `src/alertCommands/`.
+Here are a few examples of how to create and list alerts using Discord slash commands. These commands interact with the logic defined in `src/alertCommands/`.
 
 *   **Create a price alert:**
-    ```bash
-    ts-node src/index.ts create-price-alert --token-id bitcoin --direction up --value 70000
+    ```
+    /create-price-alert token-id:bitcoin direction:up value:70000
     ```
     *(This command uses the logic from `src/alertCommands/createPriceAlert.ts`)*
 
 *   **Create a volume alert:**
-    ```bash
-    ts-node src/index.ts create-volume-alert --token-id ethereum --direction up --value 100000000
     ```
+    /create-volume-alert token:ethereum direction:up volume:100000000 timeframe:24h
+    ```
+    **Note on `timeframe`:** The `timeframe` parameter is required for volume alerts and accepts the following values: `24h`, `7d`, `30d`.
     *(This command uses the logic from `src/alertCommands/createVolumeAlert.ts`)*
 
 *   **List all alerts:**
-    ```bash
-    ts-node src/index.ts list-alerts
+    ```
+    /list-alerts
     ```
     *(This command uses the logic from `src/alertCommands/listAlerts.ts`)*
+
+### Troubleshooting
+
+If slash commands do not appear in your Discord server after starting the bot, ensure the bot has been invited with the necessary permissions and that application commands have been registered. Typically, inviting the bot with the `applications.commands` scope will handle registration automatically. If issues persist, restarting the bot process might help.
 
 
 ## General Commands
