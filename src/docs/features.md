@@ -134,7 +134,8 @@ You have a Bitcoin price alert (ID: `12345`) set for $70,000, but now you want t
     *   For `value`, enter `72000`.
     *(This command is handled by `src/alertCommands/editPriceAlert.ts`)*
 2.  **Confirm the change**: Use `/list-alerts`.
-    *   For `id`, enter `12345`.
+    *   For `token`, select `bitcoin`.
+    *   For `type`, select `price`.
 
 ### Scenario 4: Disable and Enable an Alert
 
@@ -146,7 +147,7 @@ You want to temporarily pause an alert (ID: `67890`) and then re-enable it later
     *   For `id`, enter `67890`.
     *(This action uses logic from `src/alertCommands/enableAlert.ts`)*
 3.  **Check its status**: Use `/list-alerts`.
-    *   For `id`, enter `67890`.
+    *   For `token`, select `67890` (assuming 67890 is a token id, otherwise it should be omitted).
 
 ### Scenario 5: Delete an Alert
 
@@ -154,7 +155,6 @@ You no longer need a specific alert (ID: `12345`).
 1.  **Delete the alert**: Use `/delete-alert`.
     *   For `id`, enter `12345`.
     *(This command is handled by `src/alertCommands/deleteAlert.ts`)*
-2.  **Confirm deletion**: Use `/list-alerts`.
-    *   For `id`, enter `12345` (It should no longer appear).
+2.  **Confirm deletion**: Use `/list-alerts` (It should no longer appear).
 
 For more information, please visit our GitHub repository.
