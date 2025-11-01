@@ -2,6 +2,55 @@
 
 This document explains how to use the Tokenator Discord bot.
 
+## Quickstart
+
+This section provides a quick guide to get the Tokenator bot running and interacting with its core features.
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/tokenradarlabs/tokenator.git
+    cd tokenator
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+### Running CLI Commands
+
+You can run Tokenator's CLI commands using `ts-node` directly on `src/index.ts`.
+
+**Example:**
+
+```bash
+ts-node src/index.ts <command> [arguments]
+```
+
+### Example Alert Commands
+
+Here are a few examples of how to create and list alerts. These commands interact with the logic defined in `src/alertCommands/`.
+
+*   **Create a price alert:**
+    ```bash
+    ts-node src/index.ts create-price-alert --token-id bitcoin --direction up --value 70000
+    ```
+    *(This command uses the logic from `src/alertCommands/createPriceAlert.ts`)*
+
+*   **Create a volume alert:**
+    ```bash
+    ts-node src/index.ts create-volume-alert --token-id ethereum --direction up --value 100000000
+    ```
+    *(This command uses the logic from `src/alertCommands/createVolumeAlert.ts`)*
+
+*   **List all alerts:**
+    ```bash
+    ts-node src/index.ts list-alerts
+    ```
+    *(This command uses the logic from `src/alertCommands/listAlerts.ts`)*
+
+
 ## General Commands
 
 ### `/ping`
