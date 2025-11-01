@@ -32,7 +32,7 @@ Calculates the USD price for a given amount of tokens.
 
 ### `/create-price-alert`
 Creates a new price alert.
-- **token-id**: The token to create an alert for (supported: `dev`, `eth`, `btc`).
+- **token-id** (string): The token to create an alert for (supported: `dev`, `eth`, `btc`).
 - **direction**: The price direction to alert on (`up` or `down`).
 - **value**: The price value to trigger the alert.
 
