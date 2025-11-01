@@ -38,12 +38,13 @@ Set up new price or volume alerts.
 #### 3.2. List Alerts
 
 View existing alerts in the current channel.
-- **/list-alerts `[direction]` `[type]` `[token]` `[enabled]`**: Lists all alerts for the current channel. Optional filters:
-  - `direction` (string): Filter by direction (`Up`, `Down`)
-  - `type` (string): Filter by alert type (`price`, `volume`, or `all`)
-  - `token` (string): Filter by token ID
-  - `enabled` (boolean): Filter by enabled status (`true` for enabled, `false` for disabled)
-  - Example: `/list-alerts type:price enabled:true`
+- **/list-alerts `[filter-options]`**: Lists all alerts for the current channel. Optional named parameters:
+  - `direction` (string): Filter by direction (`Up`, `Down`).
+  - `type` (string): Filter by alert type (`price`, `volume`, or `all`).
+  - `token` (string): Filter by token ID (e.g., `bitcoin`).
+  - `enabled` (boolean): Filter by enabled status (`true` for enabled, `false` for disabled).
+  - `id` (string): Filter by alert ID (e.g., `12345`).
+  - Example: `/list-alerts type:price enabled:true id:12345 token:bitcoin direction:Up`
 
 #### 3.3. Edit Alerts
 
