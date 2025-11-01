@@ -98,5 +98,5 @@ With the bot running and invited to a server:
 
 ## TODO
 
-- Implement the `/linkwallet [wallet_address]` command: Allow users to link their wallets.
+- Implement the `/linkwallet [wallet_address]` command to allow users to link their wallets.
 - Accept multiple tokens 
