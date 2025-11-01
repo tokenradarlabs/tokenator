@@ -147,7 +147,7 @@ You want to temporarily pause an alert (ID: `67890`) and then re-enable it later
     *   For `id`, enter `67890`.
     *(This action uses logic from `src/alertCommands/enableAlert.ts`)*
 3.  **Check its status**: Use `/list-alerts`.
-    *   For `token`, select `67890` (assuming 67890 is a token id, otherwise it should be omitted).
+    *   For `token`, select the token associated with the alert (e.g., `bitcoin`), or omit this filter to list all alerts in the channel. Note: `/list-alerts` does not support filtering by alert ID. To find a specific alert by ID, list alerts (optionally filtering by token) and then locate the alert in the returned list.
 
 ### Scenario 5: Delete an Alert
 
