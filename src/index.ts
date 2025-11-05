@@ -1,4 +1,4 @@
-import 'dotenv/config';
+// Configure dotenv externally, e.g., via a `start` script: `node -r dotenv/config dist/index.js`
 import {
   Client,
   GatewayIntentBits,
@@ -9,7 +9,7 @@ import {
   ChatInputCommandInteraction,
   ApplicationCommandDataResolvable,
 } from 'discord.js';
-import { config, isDevelopment } from './config';
+import { config } from './config';
 import logger from './utils/logger';
 
 // --- Global Error Handling ---
@@ -411,14 +411,16 @@ Description:
   `);
 }
 
-logger.info('Bot is starting...');
+if (require.main === module) {
+  logger.info('Bot is starting...');
 
-// Parse CLI arguments
-const cliArgs = parseArgs(process.argv.slice(2)); // Exclude 'node' and 'index.ts'
+  // Parse CLI arguments
+  const cliArgs = parseArgs(process.argv.slice(2)); // Exclude 'node' and 'index.ts'
 
-if (cliArgs.help) {
-  printHelp();
-  process.exit(0);
+  if (cliArgs.help) {
+    printHelp();
+    process.exit(0);
+  }
+
+  main();
 }
-
-main();

@@ -4,7 +4,7 @@
   "description": "Feature rich discord Bot for token price alerts",
   "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node -r dotenv/config dist/index.js",
     "build": "tsc",
     "dev": "nodemon --watch src -e ts --exec \"ts-node src/index.ts\"",
     "test:config": "npm run build && node test-config.js"
