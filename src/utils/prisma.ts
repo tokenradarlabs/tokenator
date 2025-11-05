@@ -14,22 +14,20 @@ if (process.env.NODE_ENV !== "production") globalThis._prisma = prisma;
 
 export default prisma;
 
-process.once("SIGINT", async () => {
+async function gracefulShutdown(exitCode: number) {
   try {
     await prisma.$disconnect();
-    process.exit(0);
+    process.exit(exitCode);
   } catch (error) {
-    console.error("Error during Prisma disconnect on SIGINT:", error);
+    console.error("Error during Prisma disconnect:", error);
     process.exit(1);
   }
-});
+}
 
-process.once("SIGTERM", async () => {
-  try {
-    await prisma.$disconnect();
-    process.exit(0);
-  } catch (error) {
-    console.error("Error during Prisma disconnect on SIGTERM:", error);
-    process.exit(1);
-  }
-}); 
+process.once("SIGINT", () => gracefulShutdown(0));
+process.once("SIGTERM", () => gracefulShutdown(0));
+
+// The 'beforeExit' event is not suitable for asynchronous operations like prisma.$disconnect().
+// For normal exits, Prisma client will be garbage collected and connections closed.
+// SIGINT and SIGTERM handlers cover explicit termination signals.
+// Therefore, an explicit 'beforeExit' listener for prisma.$disconnect() is intentionally omitted. 
