@@ -5,18 +5,31 @@ const prismaClientSingleton = () => {
 };
 
 declare global {
-  var prisma: undefined | ReturnType<typeof prismaClientSingleton>;
+  var _prisma: undefined | ReturnType<typeof prismaClientSingleton>;
 }
 
-const prisma = globalThis.prisma ?? prismaClientSingleton();
+const prisma = globalThis._prisma ?? prismaClientSingleton();
 
-if (process.env.NODE_ENV !== "production") globalThis.prisma = prisma;
+if (process.env.NODE_ENV !== "production") globalThis._prisma = prisma;
 
 export default prisma;
 
-async function gracefulShutdown() {
-  await prisma.$disconnect();
-}
+process.once("SIGINT", async () => {
+  try {
+    await prisma.$disconnect();
+    process.exit(0);
+  } catch (error) {
+    console.error("Error during Prisma disconnect on SIGINT:", error);
+    process.exit(1);
+  }
+});
 
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown); 
+process.once("SIGTERM", async () => {
+  try {
+    await prisma.$disconnect();
+    process.exit(0);
+  } catch (error) {
+    console.error("Error during Prisma disconnect on SIGTERM:", error);
+    process.exit(1);
+  }
+}); 
