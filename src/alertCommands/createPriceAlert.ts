@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import logger from '../utils/logger';
 import { createPriceAlert } from '../lib/alertcommands';
+import { validatePriceAlertValue } from '../utils/priceValidation';
 
 export const createPriceAlertCommand = new SlashCommandBuilder()
   .setName('create-price-alert')
@@ -43,30 +44,22 @@ export async function handleCreatePriceAlert(
   const tokenId = interaction.options.getString('token-id', true);
   const { guildId, channelId } = interaction;
 
-  if (value <= 0) {
+  const validationResult = await validatePriceAlertValue(
+    tokenId,
+    value,
+    direction
+  );
+
+  if (!validationResult.isValid) {
     await interaction.reply({
-      content: 'The alert value must be a positive number.',
+      content: validationResult.errorMessage,
       flags: 64,
     });
     return;
   }
 
-  if (value > Number.MAX_SAFE_INTEGER) {
-    await interaction.reply({
-      content: 'The alert value is too large. Please enter a smaller number.',
-      flags: 64,
-    });
-    return;
-  }
-
-  const supportedTokenIds = ['scout-protocol-token', 'bitcoin', 'ethereum'];
-  if (!supportedTokenIds.includes(tokenId)) {
-    await interaction.reply({
-      content: 'Unsupported token ID. Please choose from the provided options.',
-      flags: 64,
-    });
-    return;
-  }
+  // Use the parsed and validated price value
+  const validatedPriceValue = validationResult.parsedPriceValue!;
 
   if (!guildId) {
     await interaction.reply({
@@ -88,7 +81,7 @@ export async function handleCreatePriceAlert(
     const result = await createPriceAlert({
       tokenId,
       direction,
-      value,
+      value: validatedPriceValue,
       guildId,
       channelId,
       guildName: interaction.guild?.name,
@@ -103,7 +96,7 @@ export async function handleCreatePriceAlert(
       });
     }
   } catch (error) {
-    logger.error('Error in handleCreatePriceAlert:', error);
+    logger.error(error, 'Error in handleCreatePriceAlert');
     await interaction.reply({
       content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
