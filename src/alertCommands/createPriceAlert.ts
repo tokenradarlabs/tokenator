@@ -59,8 +59,12 @@ export async function handleCreatePriceAlert(
   }
 
   // Use the parsed and validated price value
-  const validatedPriceValue = validationResult.parsedPriceValue!;
+  const validatedPriceValue = validationResult.parsedPriceValue;
 
+  if (validatedPriceValue === undefined) {
+    await interaction.reply({ content: 'Internal error validating price value.', flags: 64 });
+    return;
+  }
   if (!guildId) {
     await interaction.reply({
       content: 'This command can only be used in a server.',
