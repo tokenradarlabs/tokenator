@@ -231,6 +231,7 @@ export async function validatePriceAlertValue(
 
   return {
     isValid: true,
+    parsedPriceValue: validatedPriceValue,
     currentPrice: currentPrice || undefined,
   };
 }
