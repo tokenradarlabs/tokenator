@@ -51,6 +51,7 @@
   ```bash
   npm start
   ```
+  (Note: `dotenv` is preloaded at runtime to load environment variables from `.env` file.)
 - Run in development mode (uses `ts-node` and `nodemon` for live reload):
   ```bash
   npm run dev
