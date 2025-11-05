@@ -33,12 +33,12 @@ async function retry<T>(fn: () => Promise<T>, retries: number, delayMs: number, 
       return await fn();
     } catch (error) {
       attempt++;
-      logger.warn(`[CronJob-Retry] Attempt ${attempt}/${retries} failed for ${context}. Retrying in ${delayMs}ms...`, error as Error);
+      logger.warn(error as Error, `[CronJob-Retry] Attempt ${attempt}/${retries} failed for ${context}. Retrying in ${delayMs}ms...`);
       if (attempt < retries) {
         await delay(delayMs);
         delayMs *= 2; // Exponential backoff
       } else {
-        logger.error(`[CronJob-Retry] All ${retries} attempts failed for ${context}. Giving up.`, error as Error);
+        logger.error(error as Error, `[CronJob-Retry] All ${retries} attempts failed for ${context}. Giving up.`);
         throw error; // Re-throw the last error after all retries are exhausted
       }
     }
@@ -71,12 +71,12 @@ async function cleanupOrphanedAlerts(client: Client) {
           cleanedCount++;
 
           logger.info(
-            `[CronJob-Cleanup] Deleted orphaned alert for non-existent channel`,
             {
               channelId: alert.channelId,
               alertId: alert.id,
               tokenAddress: alert.token.address,
-            }
+            },
+            `[CronJob-Cleanup] Deleted orphaned alert for non-existent channel`
           );
         }
       } catch (error) {
@@ -500,126 +500,26 @@ async function checkVolumeAlertsWithTransaction(
 async function updateMarketMetrics(client: Client) {
   let currentDevPrice: number | null = null;
 
-  // Update DEV price
-  try {
-    const devPrice = await retry(
-      () => getDevPrice(),
-      MAX_RETRIES,
-      INITIAL_RETRY_DELAY_MS,
-      `DEV price from Uniswap`
-    );
-    currentDevPrice = devPrice;
+  currentDevPrice = await processTokenPriceUpdate(
+    client,
+    STANDARD_TOKEN_IDS.DEV,
+    getDevPrice,
+    `DEV price from Uniswap`
+  );
 
-    const previousPrice = await prisma.tokenPrice.findFirst({
-      where: {
-        token: { address: STANDARD_TOKEN_IDS.DEV },
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
-    });
+  await processTokenPriceUpdate(
+    client,
+    STANDARD_TOKEN_IDS.BTC,
+    getBtcPrice,
+    `BTC price from Uniswap`
+  );
 
-    await prisma.$transaction(async (tx) => {
-      const token = await tx.token.upsert({
-        where: { address: STANDARD_TOKEN_IDS.DEV },
-        update: {},
-        create: { address: STANDARD_TOKEN_IDS.DEV },
-      });
-
-      await tx.tokenPrice.create({
-        data: {
-          price: devPrice,
-          tokenId: token.id,
-        },
-      });
-
-      await checkPriceAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.DEV, devPrice, previousPrice);
-    });
-
-    logger.info(`[CronJob-MarketMetrics] Updated DEV price: $${devPrice}`);
-  } catch (error) {
-    logger.error(`[CronJob-MarketMetrics] Failed to update DEV price after multiple retries:`, error as Error);
-  }
-
-  // Update BTC price
-  try {
-    const btcPrice = await retry(
-      () => getBtcPrice(),
-      MAX_RETRIES,
-      INITIAL_RETRY_DELAY_MS,
-      `BTC price from Uniswap`
-    );
-
-    const previousPrice = await prisma.tokenPrice.findFirst({
-      where: {
-        token: { address: STANDARD_TOKEN_IDS.BTC },
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
-    });
-
-    await prisma.$transaction(async (tx) => {
-      const token = await tx.token.upsert({
-        where: { address: STANDARD_TOKEN_IDS.BTC },
-        update: {},
-        create: { address: STANDARD_TOKEN_IDS.BTC },
-      });
-
-      await tx.tokenPrice.create({
-        data: {
-          price: btcPrice,
-          tokenId: token.id,
-        },
-      });
-
-      await checkPriceAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.BTC, btcPrice, previousPrice);
-    });
-
-    logger.info(`[CronJob-MarketMetrics] Updated BTC price: $${btcPrice}`);
-  } catch (error) {
-    logger.error(`[CronJob-MarketMetrics] Failed to update BTC price after multiple retries:`, error as Error);
-  }
-
-  // Update ETH price
-  try {
-    const ethPrice = await retry(
-      () => getEthPrice(),
-      MAX_RETRIES,
-      INITIAL_RETRY_DELAY_MS,
-      `ETH price from Uniswap`
-    );
-
-    const previousPrice = await prisma.tokenPrice.findFirst({
-      where: {
-        token: { address: STANDARD_TOKEN_IDS.ETH },
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
-    });
-
-    await prisma.$transaction(async (tx) => {
-      const token = await tx.token.upsert({
-        where: { address: STANDARD_TOKEN_IDS.ETH },
-        update: {},
-        create: { address: STANDARD_TOKEN_IDS.ETH },
-      });
-
-      await tx.tokenPrice.create({
-        data: {
-          price: ethPrice,
-          tokenId: token.id,
-        },
-      });
-
-      await checkPriceAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.ETH, ethPrice, previousPrice);
-    });
-
-    logger.info(`[CronJob-MarketMetrics] Updated ETH price: $${ethPrice}`);
-  } catch (error) {
-    logger.error(`[CronJob-MarketMetrics] Failed to update ETH price after multiple retries:`, error as Error);
-  }
+  await processTokenPriceUpdate(
+    client,
+    STANDARD_TOKEN_IDS.ETH,
+    getEthPrice,
+    `ETH price from Uniswap`
+  );
 
   if (currentDevPrice !== null) {
     client.user?.setActivity(`DEV: ${formatPriceForDisplay(currentDevPrice)}`, {
@@ -648,126 +548,69 @@ async function fetchCoinGeckoWithRetry(tokenId: string, context: string) {
   );
 }
 
+async function processTokenVolumeUpdate(
+  client: Client,
+  tokenId: string,
+  context: string
+) {
+  try {
+    const data = await fetchCoinGeckoWithRetry(tokenId, context);
+    if (data.usd_24h_vol) {
+      const volume = data.usd_24h_vol;
+
+      const previousVolume = await prisma.tokenVolume.findFirst({
+        where: {
+          token: { address: tokenId },
+        },
+        orderBy: {
+          timestamp: 'desc',
+        },
+      });
+
+      await prisma.$transaction(async (tx) => {
+        const token = await tx.token.upsert({
+          where: { address: tokenId },
+          update: {},
+          create: { address: tokenId },
+        });
+
+        await tx.tokenVolume.create({
+          data: {
+            volume: volume,
+            tokenId: token.id,
+          },
+        });
+
+        await checkVolumeAlertsWithTransaction(tx, client, tokenId, volume, previousVolume);
+      });
+
+      logger.info(`[CronJob-VolumeMetrics] Updated ${tokenId} volume: ${formatNumber(volume)}`);
+    } else {
+      logger.warn(`[CronJob-VolumeMetrics] ${tokenId} volume data not available from CoinGecko after retries.`);
+    }
+  } catch (error) {
+    logger.error(`[CronJob-VolumeMetrics] Failed to update ${tokenId} volume after multiple retries:`, error as Error);
+  }
+}
+
 async function updateVolumeMetrics(client: Client) {
-  // Update DEV volume
-  try {
-    const devData = await fetchCoinGeckoWithRetry(STANDARD_TOKEN_IDS.DEV, `DEV volume from CoinGecko`);
-    if (devData.usd_24h_vol) {
-      const devVolume = devData.usd_24h_vol;
+  await processTokenVolumeUpdate(
+    client,
+    STANDARD_TOKEN_IDS.DEV,
+    `DEV volume from CoinGecko`
+  );
 
-      const previousVolume = await prisma.tokenVolume.findFirst({
-        where: {
-          token: { address: STANDARD_TOKEN_IDS.DEV },
-        },
-        orderBy: {
-          timestamp: 'desc',
-        },
-      });
+  await processTokenVolumeUpdate(
+    client,
+    STANDARD_TOKEN_IDS.BTC,
+    `BTC volume from CoinGecko`
+  );
 
-      await prisma.$transaction(async (tx) => {
-        const token = await tx.token.upsert({
-          where: { address: STANDARD_TOKEN_IDS.DEV },
-          update: {},
-          create: { address: STANDARD_TOKEN_IDS.DEV },
-        });
-
-        await tx.tokenVolume.create({
-          data: {
-            volume: devVolume,
-            tokenId: token.id,
-          },
-        });
-
-        await checkVolumeAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.DEV, devVolume, previousVolume);
-      });
-
-      logger.info(`[CronJob-VolumeMetrics] Updated DEV volume: ${formatNumber(devVolume)}`);
-    } else {
-      logger.warn(`[CronJob-VolumeMetrics] DEV volume data not available from CoinGecko after retries.`);
-    }
-  } catch (error) {
-    logger.error(`[CronJob-VolumeMetrics] Failed to update DEV volume after multiple retries:`, error as Error);
-  }
-
-  // Update BTC volume
-  try {
-    const btcData = await fetchCoinGeckoWithRetry(STANDARD_TOKEN_IDS.BTC, `BTC volume from CoinGecko`);
-    if (btcData.usd_24h_vol) {
-      const btcVolume = btcData.usd_24h_vol;
-
-      const previousVolume = await prisma.tokenVolume.findFirst({
-        where: {
-          token: { address: STANDARD_TOKEN_IDS.BTC },
-        },
-        orderBy: {
-          timestamp: 'desc',
-        },
-      });
-
-      await prisma.$transaction(async (tx) => {
-        const token = await tx.token.upsert({
-          where: { address: STANDARD_TOKEN_IDS.BTC },
-          update: {},
-          create: { address: STANDARD_TOKEN_IDS.BTC },
-        });
-
-        await tx.tokenVolume.create({
-          data: {
-            volume: btcVolume,
-            tokenId: token.id,
-          },
-        });
-
-        await checkVolumeAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.BTC, btcVolume, previousVolume);
-      });
-
-      logger.info(`[CronJob-VolumeMetrics] Updated BTC volume: ${formatNumber(btcVolume)}`);
-    } else {
-      logger.warn(`[CronJob-VolumeMetrics] BTC volume data not available from CoinGecko after retries.`);
-    }
-  } catch (error) {
-    logger.error(`[CronJob-VolumeMetrics] Failed to update BTC volume after multiple retries:`, error as Error);
-  }
-
-  // Update ETH volume
-  try {
-    const ethData = await fetchCoinGeckoWithRetry(STANDARD_TOKEN_IDS.ETH, `ETH volume from CoinGecko`);
-    if (ethData.usd_24h_vol) {
-      const ethVolume = ethData.usd_24h_vol;
-
-      const previousVolume = await prisma.tokenVolume.findFirst({
-        where: {
-          token: { address: STANDARD_TOKEN_IDS.ETH },
-        },
-        orderBy: {
-          timestamp: 'desc',
-        },
-      });
-
-      await prisma.$transaction(async (tx) => {
-        const token = await tx.token.upsert({
-          where: { address: STANDARD_TOKEN_IDS.ETH },
-          update: {},
-          create: { address: STANDARD_TOKEN_IDS.ETH },
-        });
-
-        await tx.tokenVolume.create({
-          data: {
-            volume: ethVolume,
-            tokenId: token.id,
-          },
-        });
-
-        await checkVolumeAlertsWithTransaction(tx, client, STANDARD_TOKEN_IDS.ETH, ethVolume, previousVolume);
-      });
-
-      logger.info(`[CronJob-VolumeMetrics] Updated ETH volume: ${formatNumber(ethVolume)}`);
-    } else {
-      logger.warn(`[CronJob-VolumeMetrics] ETH volume data not available from CoinGecko after retries.`);
-    }
-  } catch (error) {
-    logger.error(`[CronJob-VolumeMetrics] Failed to update ETH volume after multiple retries:`, error as Error);
-  }
+  await processTokenVolumeUpdate(
+    client,
+    STANDARD_TOKEN_IDS.ETH,
+    `ETH volume from CoinGecko`
+  );
 }
 
 let isMarketMetricsJobRunning = false;
