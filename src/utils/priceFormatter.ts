@@ -18,8 +18,36 @@ export function formatPrice(price: number, currency?: string, locale: string = '
     options.currency = currency;
     // Intl.NumberFormat will determine fraction digits for ISO currencies
     delete options.minimumFractionDigits;
-    delete options.maximumFractionDigits;
-    formattedPriceString = price.toLocaleString(locale, options);
+    try {
+      formattedPriceString = price.toLocaleString(locale, options);
+    } catch (error) {
+      if (error instanceof RangeError) {
+        // Fallback to decimal formatting if currency code is invalid
+        options.style = 'decimal';
+        delete options.currency; // Remove the invalid currency option
+        // Re-apply default fraction digits or determine based on price magnitude
+        const absolutePrice = Math.abs(price);
+        if (absolutePrice < 0.000001) {
+          options.minimumFractionDigits = 8;
+          options.maximumFractionDigits = 8;
+        } else if (absolutePrice < 0.01) {
+          options.minimumFractionDigits = 6;
+          options.maximumFractionDigits = 6;
+        } else if (absolutePrice < 1) {
+          options.minimumFractionDigits = 4;
+          options.maximumFractionDigits = 4;
+        } else {
+          options.minimumFractionDigits = 2;
+          options.maximumFractionDigits = 2;
+        }
+        formattedPriceString = price.toLocaleString(locale, options);
+        if (currency) {
+          formattedPriceString += ` ${currency}`;
+        }
+      } else {
+        throw error; // Re-throw other errors
+      }
+    }
   } else {
     options.style = 'decimal'; // Fallback to decimal for non-ISO/crypto codes
     const absolutePrice = Math.abs(price);
