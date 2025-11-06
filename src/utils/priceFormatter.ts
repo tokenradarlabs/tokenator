@@ -1,16 +1,4 @@
-/**
- * Formats a numerical price value into a string with consistent decimal rounding
- * and optional currency suffix.
- *
- * This function applies specific formatting rules based on the price magnitude
- * to ensure readability and precision across the application. For detailed
- * formatting standards, refer to `docs/PRICE_FORMATTING.md`.
- *
- * @param price The numerical price to format.
- * @param currency Optional. The currency unit to append (e.g., 'USD', 'ETH').
- * @returns A string representation of the formatted price.
- */
-export function formatPrice(price: number, currency?: string): string {
+export function formatPrice(price: number, currency?: string, locale: string = 'en-US'): string {
   if (isNaN(price) || !isFinite(price)) {
     return "N/A";
   }
@@ -20,29 +8,42 @@ export function formatPrice(price: number, currency?: string): string {
     maximumFractionDigits: 2,
   };
 
-  if (currency) {
+  let formattedPriceString: string;
+
+  // Check if the currency is a valid ISO 4217 code (3 uppercase letters)
+  const isISO4217 = currency && /^[A-Z]{3}$/.test(currency);
+
+  if (isISO4217) {
     options.style = 'currency';
     options.currency = currency;
-  }
-
-  if (price < 0.000001) { // Very small numbers, show more precision
-    options.minimumFractionDigits = 8;
-    options.maximumFractionDigits = 8;
-  } else if (price < 0.01) {
-    options.minimumFractionDigits = 6;
-    options.maximumFractionDigits = 6;
-  } else if (price < 1) {
-    options.minimumFractionDigits = 4;
-    options.maximumFractionDigits = 4;
-  } else if (price < 100) {
-    options.minimumFractionDigits = 2;
-    options.maximumFractionDigits = 2;
+    // Intl.NumberFormat will determine fraction digits for ISO currencies
+    delete options.minimumFractionDigits;
+    delete options.maximumFractionDigits;
+    formattedPriceString = price.toLocaleString(locale, options);
   } else {
-    options.minimumFractionDigits = 2;
-    options.maximumFractionDigits = 2;
+    options.style = 'decimal'; // Fallback to decimal for non-ISO/crypto codes
+    const absolutePrice = Math.abs(price);
+
+    if (absolutePrice < 0.000001) { // Very small numbers, show more precision
+      options.minimumFractionDigits = 8;
+      options.maximumFractionDigits = 8;
+    } else if (absolutePrice < 0.01) {
+      options.minimumFractionDigits = 6;
+      options.maximumFractionDigits = 6;
+    } else if (absolutePrice < 1) {
+      options.minimumFractionDigits = 4;
+      options.maximumFractionDigits = 4;
+    } else { // Default for price >= 1, including price < 100
+      options.minimumFractionDigits = 2;
+      options.maximumFractionDigits = 2;
+    }
+    formattedPriceString = price.toLocaleString(locale, options);
+    if (currency) {
+      formattedPriceString += ` ${currency}`;
+    }
   }
 
-  return price.toLocaleString(undefined, options);
+  return formattedPriceString;
 }
 
 /**
