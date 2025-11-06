@@ -5,16 +5,7 @@ const { BETTERSTACK_TOKEN, PINO_LOG_LEVEL } = process.env;
 
 let transport;
 
-if (isDevelopment()) {
-  transport = pino.transport({
-    target: "pino-pretty",
-    options: {
-      colorize: true,
-      levelFirst: true,
-      translateTime: "SYS:standard",
-    },
-  });
-} else if (BETTERSTACK_TOKEN) {
+if (BETTERSTACK_TOKEN) {
   transport = pino.transport({
     targets: [
       {
@@ -30,7 +21,7 @@ if (isDevelopment()) {
     ],
   });
 } else {
-  // Default to stdout if no BetterStack token and not in development
+  // Default to stdout (JSON) if no BetterStack token
   transport = pino.transport({
     target: "pino/file", // stdout
     options: { destination: 1 }, // 1 = stdout
