@@ -76,7 +76,7 @@ export async function handleEditVolumeAlert(
       flags: 64,
     });
   } catch (error) {
-    logger.error('Error in handleEditVolumeAlert:', error);
+    logger.error({ err: error }, 'Error in handleEditVolumeAlert:');
     await interaction.reply({
       content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,

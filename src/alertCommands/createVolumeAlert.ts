@@ -100,32 +100,29 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     });
 
     if (result.success) {
-      logger.info(`[VolumeAlertCommand] Volume alert created successfully`, {
-        guildId,
+      logger.info({        guildId,
         channelId,
         userId: interaction.user.id,
         token,
         direction,
         volume,
-      });
+      }, `[VolumeAlertCommand] Volume alert created successfully`);
     } else {
-      logger.warn(`[VolumeAlertCommand] Failed to create volume alert`, {
-        guildId,
+      logger.warn({        guildId,
         channelId,
         userId: interaction.user.id,
         token,
         direction,
         volume,
         reason: result.message,
-      });
+      }, `[VolumeAlertCommand] Failed to create volume alert`);
     }
 
   } catch (error) {
-    logger.error('[VolumeAlertCommand] Error executing volume alert command', error as Error, {
-      guildId: interaction.guildId,
+    logger.error({ err: error,        guildId: interaction.guildId,
       channelId: interaction.channelId,
       userId: interaction.user.id,
-    });
+    }, '[VolumeAlertCommand] Error executing volume alert command');
 
     const errorMessage = '❌ An unexpected error occurred while creating the volume alert. Please try again later.';
     

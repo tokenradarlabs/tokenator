@@ -73,7 +73,7 @@ export async function handleEnablePriceAlert(
       });
     }
   } catch (error) {
-    logger.error('Error in handleEnablePriceAlert:', error);
+    logger.error({ err: error }, 'Error in handleEnablePriceAlert:');
     await interaction.reply({
       content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
