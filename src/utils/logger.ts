@@ -1,7 +1,8 @@
 import pino from "pino";
-import { isDevelopment } from "../config";
 
 const { BETTERSTACK_TOKEN, PINO_LOG_LEVEL } = process.env;
+
+const defaultLevel = PINO_LOG_LEVEL || "info";
 
 let transport;
 
@@ -11,12 +12,12 @@ if (BETTERSTACK_TOKEN) {
       {
         target: "@logtail/pino",
         options: { sourceToken: BETTERSTACK_TOKEN },
-        level: PINO_LOG_LEVEL || "info",
+        level: defaultLevel,
       },
       {
         target: "pino/file", // stdout
         options: { destination: 1 }, // 1 = stdout
-        level: PINO_LOG_LEVEL || "info",
+        level: defaultLevel,
       },
     ],
   });
@@ -25,13 +26,13 @@ if (BETTERSTACK_TOKEN) {
   transport = pino.transport({
     target: "pino/file", // stdout
     options: { destination: 1 }, // 1 = stdout
-    level: PINO_LOG_LEVEL || "info",
+    level: defaultLevel,
   });
 }
 
 const logger = pino(
   {
-    level: PINO_LOG_LEVEL || (isDevelopment() ? "debug" : "info"),
+    level: defaultLevel,
     formatters: {
       level: (label) => {
         return { level: label.toUpperCase() };

@@ -128,7 +128,7 @@ export async function handleListAlerts(
 
     await interaction.reply({ embeds: [embed] });
   } catch (error) {
-    logger.error('Error in handleListPriceAlerts:', error);
+    logger.error({ err: error }, 'Error in handleListPriceAlerts:');
     await interaction.reply({
       content: "Sorry, there was an unexpected error. Please try again later.",
       flags: 64,

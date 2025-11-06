@@ -92,13 +92,13 @@ async function cleanupOrphanedAlerts(client: Client) {
           cleanedCount++;
 
           logger.info(
-            `[CronJob-Cleanup] Deleted orphaned alert for inaccessible channel`,
             {
               channelId: alert.channelId,
               alertId: alert.id,
               tokenAddress: alert.token.address,
               error: error.message,
-            }
+            },
+            `[CronJob-Cleanup] Deleted orphaned alert for inaccessible channel`
           );
         } else {
           logger.error(

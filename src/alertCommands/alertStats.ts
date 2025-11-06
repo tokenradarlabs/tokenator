@@ -89,7 +89,7 @@ export async function handleAlertStats(
     logger.info(`Successfully displayed alert stats for guild ${guildId}`);
   } catch (error) {
     // Catch any unexpected errors during the process.
-    logger.error('Unexpected error in handleAlertStats:', error);
+    logger.error({ err: error }, 'Unexpected error in handleAlertStats:');
     await interaction.reply({
       content: 'An unexpected error occurred while fetching alert statistics. Please try again later.',
       flags: 64,

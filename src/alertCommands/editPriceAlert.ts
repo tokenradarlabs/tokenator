@@ -88,7 +88,7 @@ export async function handleEditPriceAlert(
       flags: 64,
     });
   } catch (error) {
-    logger.error('Error in handleEditPriceAlert:', error);
+    logger.error({ err: error }, 'Error in handleEditPriceAlert:');
     await interaction.reply({
       content: 'Sorry, there was an unexpected error. Please try again later.',
       flags: 64,
