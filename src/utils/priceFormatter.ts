@@ -47,16 +47,16 @@ export function formatPrice(price: number, currency?: string, locale: string = '
 }
 
 /**
- * Formats a numerical price for display, prepending a dollar sign and
- * optionally appending a currency suffix.
+ * Formats a numerical price for display with optional currency suffix.
  *
  * This function leverages `formatPrice` for consistent rounding and formatting.
  * For detailed formatting standards, refer to `docs/PRICE_FORMATTING.md`.
  *
  * @param price The numerical price to format for display.
  * @param currency Optional. The currency unit to append (e.g., 'USD', 'ETH').
- * @returns A string representation of the formatted price, prefixed with '$`.
+ * @param locale Optional. The locale to use for formatting. Defaults to 'en-US'.
+ * @returns A string representation of the formatted price.
  */
-export function formatPriceForDisplay(price: number, currency?: string): string {
-  return formatPrice(price, currency);
+export function formatPriceForDisplay(price: number, currency?: string, locale?: string): string {
+  return formatPrice(price, currency, locale);
 }
