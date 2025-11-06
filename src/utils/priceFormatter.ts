@@ -11,22 +11,38 @@
  * @returns A string representation of the formatted price.
  */
 export function formatPrice(price: number, currency?: string): string {
-  let formattedPrice: string;
-
-  if (price < 0.01) {
-    formattedPrice = price.toFixed(6);
-  } else if (price < 1) {
-    formattedPrice = price.toFixed(4);
-  } else if (price < 100) {
-    formattedPrice = price.toFixed(2);
-  } else {
-    formattedPrice = price.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  if (isNaN(price) || !isFinite(price)) {
+    return "N/A";
   }
 
-  return currency ? `${formattedPrice} ${currency}` : formattedPrice;
+  let options: Intl.NumberFormatOptions = {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  };
+
+  if (currency) {
+    options.style = 'currency';
+    options.currency = currency;
+  }
+
+  if (price < 0.000001) { // Very small numbers, show more precision
+    options.minimumFractionDigits = 8;
+    options.maximumFractionDigits = 8;
+  } else if (price < 0.01) {
+    options.minimumFractionDigits = 6;
+    options.maximumFractionDigits = 6;
+  } else if (price < 1) {
+    options.minimumFractionDigits = 4;
+    options.maximumFractionDigits = 4;
+  } else if (price < 100) {
+    options.minimumFractionDigits = 2;
+    options.maximumFractionDigits = 2;
+  } else {
+    options.minimumFractionDigits = 2;
+    options.maximumFractionDigits = 2;
+  }
+
+  return price.toLocaleString(undefined, options);
 }
 
 /**
@@ -41,5 +57,5 @@ export function formatPrice(price: number, currency?: string): string {
  * @returns A string representation of the formatted price, prefixed with '$`.
  */
 export function formatPriceForDisplay(price: number, currency?: string): string {
-  return `$${formatPrice(price, currency)}`;
+  return formatPrice(price, currency);
 }
