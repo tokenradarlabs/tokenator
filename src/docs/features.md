@@ -4,7 +4,7 @@ Tokenator is a Discord bot that provides real-time cryptocurrency information an
 
 ## Bot Slash Commands
 
-These commands are implemented as Discord slash commands. Use the command name (e.g., `/create-price-alert`) and fill in the options presented by Discord's UI. The colon-separated inline syntax (e.g., `token-id:bitcoin`) is not supported by these slash commands and is incorrect.
+These commands are implemented as Discord slash commands. Users should invoke the command name (e.g., `/create-price-alert`) and then supply parameters via Discord's UI modal. The multi-line or colon-separated examples shown in this document are simplified representations for readability and are not to be typed directly into Discord.
 
 The bot supports the following slash commands:
 
@@ -36,8 +36,11 @@ Set up new price or volume alerts.
   - `value` (number, required): Threshold price in USD.
   - `notify-channel` (channel, optional): Channel to post the alert.
   *Example: To create a price alert for Bitcoin going above $70,000:*
-  ```
-  /create-price-alert token-id:bitcoin direction:up value:70000
+  ```text
+  /create-price-alert
+  token-id: bitcoin
+  direction: up
+  value: 70000
   ```
 - **/create-volume-alert**
   - `token` (string, required): The token to track (e.g., `scout-protocol-token`, `bitcoin`, `ethereum`).
@@ -45,8 +48,12 @@ Set up new price or volume alerts.
   - `volume` (number, required): The volume threshold in USD (e.g., `1000000` for $1M).
   - `timeframe` (string, required): The time frame for the volume (e.g., `24h`, `7d`, `30d`).
   *Example: To create a volume alert for Ethereum's 24-hour volume going above $100,000,000:*
-  ```
-  /create-volume-alert token:ethereum direction:up volume:100000000 timeframe:24h
+  ```text
+  /create-volume-alert
+  token: ethereum
+  direction: up
+  volume: 100000000
+  timeframe: 24h
   ```
 
 #### 3.2. List Alerts
@@ -60,8 +67,11 @@ View existing alerts in the current channel.
   - `page` (number, optional): Page number to display (defaults to 1).
   - `limit` (number, optional): Number of alerts per page (defaults to 10, max 50).
   *Example: To list all active price alerts for Bitcoin:*
-  ```
-  /list-alerts token:bitcoin type:price enabled:true
+  ```text
+  /list-alerts
+  token: bitcoin
+  type: price
+  enabled: true
   ```
 
 #### 3.3. Edit Alerts
@@ -72,16 +82,21 @@ Modify existing price or volume alerts.
   - `direction` (string, optional): The new price direction to alert on.
   - `value` (number, optional): The new price value to alert at.
   *Example: To change a price alert with ID `12345` to trigger at $72,000:*
-  ```
-  /edit-price-alert id:12345 value:72000
+  ```text
+  /edit-price-alert
+  id: 12345
+  value: 72000
   ```
 - **/edit-volume-alert**
   - `id` (string, required): The ID of the volume alert to edit.
   - `direction` (string, optional): The new volume direction to alert on.
   - `value` (number, optional): The new volume value to alert at.
   *Example: To change a volume alert with ID `67890` to trigger when volume goes down to $4,000,000,000:*
-  ```
-  /edit-volume-alert id:67890 direction:down value:4000000000
+  ```text
+  /edit-volume-alert
+  id: 67890
+  direction: down
+  value: 4000000000
   ```
 
 #### 3.4. Enable/Disable Alerts
@@ -91,15 +106,17 @@ Control the active status of your alerts.
   - `id` (string, optional): The ID of the alert to enable.
   - `enable-type` (string, optional): Choose which type of alerts to enable (`all`, `price`, `volume`).
   *Example: To enable a specific alert with ID `112233`:*
-  ```
-  /enable-alert id:112233
+  ```text
+  /enable-alert
+  id: 112233
   ```
 - **/disable-alert**
   - `id` (string, optional): The ID of the alert to disable.
   - `disable-type` (string, optional): Choose which type of alerts to disable (`all`, `price`, `volume`).
   *Example: To disable all volume alerts in the current channel:*
-  ```
-  /disable-alert disable-type:volume
+  ```text
+  /disable-alert
+  disable-type: volume
   ```
 
 #### 3.5. Delete Alerts
@@ -110,12 +127,14 @@ Remove alerts from the system.
   - `delete-disabled` (string, optional): Delete all disabled alerts in this channel (`true`).
   - `type` (string, optional): Type of alert to delete (`price`, `volume`, or `all`). Required for bulk delete.
   *Example: To delete a specific alert with ID `445566`:*
-  ```
-  /delete-alert id:445566
+  ```text
+  /delete-alert
+  id: 445566
   ```
   *Example: To delete all disabled alerts in the current channel:*
-  ```
-  /delete-alert delete-disabled:true
+  ```text
+  /delete-alert
+  delete-disabled: true
   ```
 
 #### 3.6. Alert Statistics
@@ -124,8 +143,9 @@ View summary statistics for alerts in the current channel.
 - **/alert-stats**
   - `token` (string, optional): Filter stats by token (e.g., `scout-protocol-token`, `bitcoin`, `ethereum`).
   *Example: To view alert statistics for Bitcoin:*
-  ```
-  /alert-stats token:bitcoin
+  ```text
+  /alert-stats
+  token: bitcoin
   ```
 
 ## Examples: Main Alert Flows

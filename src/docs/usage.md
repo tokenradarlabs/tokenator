@@ -30,7 +30,7 @@ DATABASE_URL="postgresql://user:password@host:port/database?schema=public" # You
 ```
 
 *   `DISCORD_BOT_TOKEN`: Your Discord bot's token. Obtain this from the Discord Developer Portal.
-*   `COINGECKO_API_KEY`: (Optional) An API key for CoinGecko. While the bot can function without it, providing one can help avoid rate limiting issues with CoinGecko's public API.
+*   `COINGECKO_API_KEY`: (Optional) An API key for CoinGecko. While the bot can function without it, providing one can help avoid rate-limiting issues with CoinGecko's public API.
 *   `DATABASE_URL`: The connection string for your PostgreSQL database. Tokenator uses Prisma for database interactions.
 
 ### Running the Bot
@@ -49,6 +49,8 @@ To start the Tokenator bot and connect it to Discord:
     *(This command uses `ts-node src/index.ts` internally, as defined in `package.json`)*
 
 Once the bot is running and invited to your Discord server (guild), you can interact with it using Discord slash commands. Commands are not invoked by passing arguments to `ts-node src/index.ts` directly after initial setup.
+
+**Note:** The multi-line or colon-separated examples shown below are simplified documentation representations for readability. Users should invoke the slash command in Discord and then supply parameters via Discord's UI modal, not by typing colon-separated inline parameters.
 
 ### Example Alert Commands
 
