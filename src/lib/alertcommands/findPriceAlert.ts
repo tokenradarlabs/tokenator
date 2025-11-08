@@ -1,4 +1,4 @@
-import { PrismaClient, Alert, PriceAlert, Token } from '../../generated/prisma/client';
+import { PrismaClient, Alert, PriceAlert, Token } from '../../generated/prisma';
 
 type FindPriceAlertResult =
   | { success: true; alert: PriceAlert & { tokenId: string } }
