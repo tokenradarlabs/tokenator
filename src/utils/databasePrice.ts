@@ -1,5 +1,6 @@
 import prisma from "./prisma";
 import logger from "./logger";
+import { Token, TokenPrice } from "../generated/prisma";
 
 // Supported tokens and their normalized IDs  
 const SUPPORTED_TOKENS = {
@@ -28,7 +29,7 @@ export async function getLatestTokenPriceFromDatabase(tokenId: string): Promise<
   }
 
   try {
-    const latestPrice = await getLatestTokenPriceRecord(standardizedId);
+    const latestPrice: TokenPrice | null = await getLatestTokenPriceRecord(standardizedId);
 
     if (latestPrice) {
       logger.info(`[DatabasePrice] Retrieved price for ${standardizedId}: $${latestPrice.price} (timestamp: ${latestPrice.timestamp.toISOString()})`);
@@ -54,7 +55,7 @@ export async function upsertTokenPrice(tokenAddress: string, price: number, time
   try {
     await prisma.$transaction(async (tx) => {
       // Find or create the token
-      const token = await tx.token.upsert({
+      const token: Token = await tx.token.upsert({
         where: { address: tokenAddress },
         update: {},
         create: { address: tokenAddress },
@@ -92,7 +93,7 @@ export async function getLatestTokenPriceWithMetadata(tokenId: string): Promise<
 
   try {
     // Get the latest price from the database
-    const latestPrice = await prisma.tokenPrice.findFirst({
+    const latestPrice: TokenPrice | null = await prisma.tokenPrice.findFirst({
       where: {
         token: {
           address: standardizedId 
@@ -118,12 +119,12 @@ export async function getLatestTokenPriceWithMetadata(tokenId: string): Promise<
     return null;
   }
 }
-async function getLatestTokenPriceRecord(standardizedId: string): Promise<{ price: number, timestamp: Date } | null> {
+async function getLatestTokenPriceRecord(standardizedId: string): Promise<TokenPrice | null> {
     try {
-        const record = await prisma.tokenPrice.findFirst({
+        const record: TokenPrice | null = await prisma.tokenPrice.findFirst({
             where: {
                 token: {
-                    address: standardizedId // Use 'id' or the correct field for token ID
+                    address: standardizedId 
                 }
             },
             orderBy: {
@@ -132,10 +133,7 @@ async function getLatestTokenPriceRecord(standardizedId: string): Promise<{ pric
         });
 
         if (record) {
-            return {
-                price: record.price,
-                timestamp: record.timestamp
-            };
+            return record;
         } else {
             return null;
         }
