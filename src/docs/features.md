@@ -4,7 +4,7 @@ Tokenator is a Discord bot that provides real-time cryptocurrency information an
 
 ## Bot Slash Commands
 
-These commands are implemented as Discord slash commands. Use the command name (e.g., `/create-price-alert`) and fill in the options presented by Discord's UI. The colon-separated inline syntax (e.g., `token-id:bitcoin`) is not supported by these slash commands and is incorrect.
+These commands are implemented as Discord slash commands. Users should invoke the command name (e.g., `/create-price-alert`) and then supply parameters via Discord's UI modal. The multi-line or colon-separated examples shown in this document are simplified representations for readability and are not to be typed directly into Discord.
 
 The bot supports the following slash commands:
 
@@ -30,72 +30,123 @@ These commands allow users to create, manage, and monitor price and volume alert
 #### 3.1. Create Alerts
 
 Set up new price or volume alerts.
-- **/create-price-alert** — Opens a dialog with the following options:
+- **/create-price-alert**
   - `token-id` (string, required): Supported tokens — `scout-protocol-token`, `bitcoin`, `ethereum`.
   - `direction` (string, required): Allowed values — `up` (alert when price >= value), `down` (alert when price <= value).
   - `value` (number, required): Threshold price in USD.
   - `notify-channel` (channel, optional): Channel to post the alert.
-  Type `/create-price-alert` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
-- **/create-volume-alert** — Opens a dialog with the following options:
+  *Example: To create a price alert for Bitcoin going above $70,000:*
+  ```text
+  /create-price-alert
+  token-id: bitcoin
+  direction: up
+  value: 70000
+  ```
+- **/create-volume-alert**
   - `token` (string, required): The token to track (e.g., `scout-protocol-token`, `bitcoin`, `ethereum`).
   - `direction` (string, required): Alert when volume goes `up` or `down`.
   - `volume` (number, required): The volume threshold in USD (e.g., `1000000` for $1M).
   - `timeframe` (string, required): The time frame for the volume (e.g., `24h`, `7d`, `30d`).
-  Type `/create-volume-alert` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
+  *Example: To create a volume alert for Ethereum's 24-hour volume going above $100,000,000:*
+  ```text
+  /create-volume-alert
+  token: ethereum
+  direction: up
+  volume: 100000000
+  timeframe: 24h
+  ```
 
 #### 3.2. List Alerts
 
 View existing alerts in the current channel.
-- **/list-alerts** — Opens a dialog with the following options:
+- **/list-alerts**
   - `direction` (string, optional): Filter by direction (`Up`, `Down`).
   - `type` (string, optional): Filter by alert type (`price`, `volume`, or `all`).
   - `token` (string, optional): Filter by token ID (e.g., `bitcoin`).
   - `enabled` (string, optional): Filter by enabled status (`true` for enabled, `false` for disabled).
   - `page` (number, optional): Page number to display (defaults to 1).
   - `limit` (number, optional): Number of alerts per page (defaults to 10, max 50).
-  Type `/list-alerts` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
+  *Example: To list all active price alerts for Bitcoin:*
+  ```text
+  /list-alerts
+  token: bitcoin
+  type: price
+  enabled: true
+  ```
 
 #### 3.3. Edit Alerts
 
 Modify existing price or volume alerts.
-- **/edit-price-alert** — Opens a dialog with the following options:
+- **/edit-price-alert**
   - `id` (string, required): The ID of the alert to edit.
   - `direction` (string, optional): The new price direction to alert on.
   - `value` (number, optional): The new price value to alert at.
-  Type `/edit-price-alert` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
-- **/edit-volume-alert** — Opens a dialog with the following options:
+  *Example: To change a price alert with ID `12345` to trigger at $72,000:*
+  ```text
+  /edit-price-alert
+  id: 12345
+  value: 72000
+  ```
+- **/edit-volume-alert**
   - `id` (string, required): The ID of the volume alert to edit.
   - `direction` (string, optional): The new volume direction to alert on.
   - `value` (number, optional): The new volume value to alert at.
-  Type `/edit-volume-alert` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
+  *Example: To change a volume alert with ID `67890` to trigger when volume goes down to $4,000,000,000:*
+  ```text
+  /edit-volume-alert
+  id: 67890
+  direction: down
+  value: 4000000000
+  ```
 
 #### 3.4. Enable/Disable Alerts
 
 Control the active status of your alerts.
-- **/enable-alert** — Opens a dialog with the following options:
+- **/enable-alert**
   - `id` (string, optional): The ID of the alert to enable.
   - `enable-type` (string, optional): Choose which type of alerts to enable (`all`, `price`, `volume`).
-  Type `/enable-alert` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
-- **/disable-alert** — Opens a dialog with the following options:
+  *Example: To enable a specific alert with ID `112233`:*
+  ```text
+  /enable-alert
+  id: 112233
+  ```
+- **/disable-alert**
   - `id` (string, optional): The ID of the alert to disable.
   - `disable-type` (string, optional): Choose which type of alerts to disable (`all`, `price`, `volume`).
-  Type `/disable-alert` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
+  *Example: To disable all volume alerts in the current channel:*
+  ```text
+  /disable-alert
+  disable-type: volume
+  ```
 
 #### 3.5. Delete Alerts
 
 Remove alerts from the system.
-- **/delete-alert** — Opens a dialog with the following options:
+- **/delete-alert**
   - `id` (string, optional): The ID of the alert to delete.
   - `delete-disabled` (string, optional): Delete all disabled alerts in this channel (`true`).
   - `type` (string, optional): Type of alert to delete (`price`, `volume`, or `all`). Required for bulk delete.
-  Type `/delete-alert` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
+  *Example: To delete a specific alert with ID `445566`:*
+  ```text
+  /delete-alert
+  id: 445566
+  ```
+  *Example: To delete all disabled alerts in the current channel:*
+  ```text
+  /delete-alert
+  delete-disabled: true
+  ```
 
 #### 3.6. Alert Statistics
 
 View summary statistics for alerts in the current channel.
-- **/alert-stats** — Opens a dialog with the following options:
+- **/alert-stats**
   - `token` (string, optional): Filter stats by token (e.g., `scout-protocol-token`, `bitcoin`, `ethereum`).
-  Type `/alert-stats` and fill in the fields shown in the command UI; no colon-separated inline arguments are accepted.
+  *Example: To view alert statistics for Bitcoin:*
+  ```text
+  /alert-stats
+  token: bitcoin
+  ```
 
 ## Examples: Main Alert Flows
 
@@ -158,3 +209,25 @@ You no longer need a specific alert (ID: `12345`).
 2.  **Confirm deletion**: Use `/list-alerts` (It should no longer appear).
 
 For more information, please visit our GitHub repository.
+
+## Common Issues and FAQ
+
+**Q: Why are my slash commands not appearing or working correctly?**
+A: Ensure the bot is running and has the necessary permissions in your Discord server, especially the `applications.commands` scope. If you've recently updated the bot or added new commands, a restart might be required for Discord to refresh the command list.
+
+**Q: The bot isn't sending alerts. What could be wrong?**
+A: Check the following:
+1.  **Bot Status:** Is the bot running and online in Discord?
+2.  **Alert Status:** Use `/list-alerts` to confirm your alerts are enabled and correctly configured.
+3.  **Permissions:** Does the bot have permission to send messages in the `notify-channel` (if specified) or the channel where the alert was created?
+4.  **Database Connection:** Verify your `DATABASE_URL` is correct and the database is accessible.
+5.  **API Rate Limits:** If using the free CoinGecko API, you might be hitting rate limits. Consider obtaining an API key and configuring it in your `.env` file.
+
+**Q: Can I set alerts for tokens not listed in the examples?**
+A: The bot currently supports a predefined list of tokens (`scout-protocol-token`, `bitcoin`, `ethereum`). Support for additional tokens would require modifications to the bot's codebase.
+
+**Q: How often do price and volume checks run?**
+A: Price and volume checks are performed at regular intervals, typically every few minutes, as configured in the bot's cron jobs (e.g., `src/cron/priceUpdateJob.ts`). The exact frequency can be adjusted in the bot's configuration.
+
+**Q: What happens if the bot goes offline?**
+A: If the bot goes offline, it will stop checking for and sending alerts. Once restarted, it will resume its operations. Alerts are stored in the database, so they persist across bot restarts.
