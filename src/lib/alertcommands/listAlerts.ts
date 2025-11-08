@@ -119,8 +119,7 @@ export async function listAlerts(
         }
         return null;
       })
-      .filter(alert => alert !== null)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .filter(alert => alert !== null);
 
     return {
       success: true,
