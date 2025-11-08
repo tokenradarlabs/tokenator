@@ -1,5 +1,6 @@
 import prisma from './prisma';
 import logger from './logger';
+import { Token, TokenVolume } from "../generated/prisma";
 
 /**
  * Gets the latest volume for a token from the database based on the specified timeframe.
@@ -12,7 +13,7 @@ export async function getTokenVolumeByTimeframe(
   timeframe: '24h' | '7d' | '30d'
 ): Promise<number | null> {
   try {
-    const latestVolume = await prisma.tokenVolume.findFirst({
+    const latestVolume: TokenVolume | null = await prisma.tokenVolume.findFirst({
       where: { token: { address: tokenId } },
       orderBy: { timestamp: 'desc' },
     });
@@ -24,7 +25,7 @@ export async function getTokenVolumeByTimeframe(
 
     switch (timeframe) {
       case '24h':
-        return latestVolume.volume24h ?? null;
+        return latestVolume.volume ?? null;
       case '7d':
         return latestVolume.volume7d ?? null;
       case '30d':
@@ -47,7 +48,7 @@ export async function getTokenVolumeHistory(
   limit: number = 30
 ): Promise<Array<{ volume: number; timestamp: Date }>> {
   try {
-    const volumeHistory = await prisma.tokenVolume.findMany({
+    const volumeHistory: Array<{ volume: number; timestamp: Date }> = await prisma.tokenVolume.findMany({
       where: {
         token: { address: tokenId },
       },
