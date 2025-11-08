@@ -473,12 +473,8 @@ async function checkVolumeAlertsWithTransaction(
           }
         } catch (error) {
           logger.error(
-            `[CronJob-VolumeAlert] Error processing volume alert trigger within transaction`,
-            error as Error,
-            {
-              alertId: alert.id,
-              tokenId: alert.token.address,
-            }
+            { error: error as Error, alertId: alert.id, tokenId: alert.token.address },
+            `[CronJob-VolumeAlert] Error processing volume alert trigger within transaction`
           );
           throw error;
         }
@@ -486,12 +482,8 @@ async function checkVolumeAlertsWithTransaction(
     }
   } catch (error) {
     logger.error(
-      `[CronJob-VolumeAlert] Error checking volume alerts within transaction`,
-      error as Error,
-      {
-        tokenId,
-        currentVolume,
-      }
+      { error: error as Error, tokenId, currentVolume },
+      `[CronJob-VolumeAlert] Error checking volume alerts within transaction`
     );
     throw error;
   }
@@ -589,7 +581,7 @@ async function processTokenVolumeUpdate(
       logger.warn(`[CronJob-VolumeMetrics] ${tokenId} volume data not available from CoinGecko after retries.`);
     }
   } catch (error) {
-    logger.error(`[CronJob-VolumeMetrics] Failed to update ${tokenId} volume after multiple retries:`, error as Error);
+    logger.error({ error: error as Error, tokenId }, `[CronJob-VolumeMetrics] Failed to update ${tokenId} volume after multiple retries:`);
   }
 }
 
@@ -622,7 +614,7 @@ export function startDevPriceUpdateJob(client: Client) {
     updateMarketMetrics(client),
     updateVolumeMetrics(client), // Run volume update on startup
   ]).catch(error => {
-    logger.error(`[CronJob] Error running initial startup tasks:`, error);
+    logger.error({ error }, `[CronJob] Error running initial startup tasks:`);
   });
 
   try {
@@ -638,8 +630,8 @@ export function startDevPriceUpdateJob(client: Client) {
           await updateMarketMetrics(client);
         } catch (error) {
           logger.error(
-            `[CronJob] Error running scheduled market metrics update:`,
-            error
+            { error },
+            `[CronJob] Error running scheduled market metrics update:`
           );
         } finally {
           isMarketMetricsJobRunning = false;
