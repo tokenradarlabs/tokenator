@@ -46,7 +46,7 @@ const cacheTimeouts = new Map<string, NodeJS.Timeout>();
  * formatNumber(1234.56, 1);
  *
  * @example
- * // Returns "1,234.56"
+ * // Returns "1.23K"
  * formatNumber(1234.56, 2);
  *
  * @example
