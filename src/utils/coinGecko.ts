@@ -1,32 +1,12 @@
 import logger from './logger';
 import { config } from '../config';
-import 'dotenv/config';
 
-/**
- * @file CoinGecko Utility Module
- * @module utils/coinGecko
- * @description This module provides utilities for interacting with the CoinGecko API,
- * including fetching token prices and handling API-related errors.
- *
- * It implements an in-memory cache for CoinGecko API responses to deduplicate
- * frequent identical requests. This cache is designed for short-term deduplication
- * within a single run and gracefully falls back to a fresh API call on cache failures.
- *
- * @property {number} COINGECKO_CACHE_TTL_SECONDS - The time-to-live (TTL) for cache entries in seconds.
- *                                                  Cache entries expire after this duration.
- * @property {Map<string, { data: CoinGeckoPriceDetail; expiry: number }>} priceCache -
- *           The in-memory cache storing CoinGecko price data. Keys are token IDs,
- *           values are objects containing the price detail and an expiry timestamp.
- * @property {Map<string, NodeJS.Timeout>} cacheTimeouts -
- *           A map to store timeout IDs for each cached token, allowing for clearing
- *           timeouts if a token is re-cached before its previous expiry.
- */
+// Clamp COINGECKO_CACHE_TTL_SECONDS between min and max cooldown values
+const CACHE_TTL = Math.max(
+  config.COINGECKO_API_CACHE_COOLDOWN_SECONDS_MIN,
+  Math.min(config.COINGECKO_CACHE_TTL_SECONDS, config.COINGECKO_API_CACHE_COOLDOWN_SECONDS_MAX)
+);
 
-// In-memory cache for CoinGecko API responses to deduplicate frequent identical requests.
-// This cache is tiny, optional, and designed for short-term deduplication within a single run.
-// On cache failures (e.g., unexpected data structure), it will gracefully fallback to a fresh API call.
-// Cache entries expire after COINGECKO_CACHE_TTL_SECONDS.
-const COINGECKO_CACHE_TTL_SECONDS = 5; // Cache entries expire after 5 seconds
 const priceCache = new Map<string, { data: CoinGeckoPriceDetail; expiry: number }>();
 const cacheTimeouts = new Map<string, NodeJS.Timeout>();
 
@@ -212,7 +192,7 @@ export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeck
     logger.info(`[CoinGecko] Successfully fetched price for ${tokenId}: $${tokenData.usd}`);
 
     // Cache the successful response
-    const expiry = Date.now() + COINGECKO_CACHE_TTL_SECONDS * 1000;
+    const expiry = Date.now() + CACHE_TTL * 1000;
     priceCache.set(tokenId, { data: tokenData, expiry });
 
     // Clear any existing timeout and set a new one
@@ -223,7 +203,7 @@ export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeck
       priceCache.delete(tokenId);
       cacheTimeouts.delete(tokenId);
       logger.debug(`[CoinGecko] Cache for ${tokenId} expired and cleared.`);
-    }, COINGECKO_CACHE_TTL_SECONDS * 1000);
+    }, CACHE_TTL * 1000);
     cacheTimeouts.set(tokenId, timeout);
 
     return { ok: true, data: tokenData };

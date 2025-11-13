@@ -35,3 +35,6 @@ export const STANDARD_TOKEN_IDS = {
   BTC: "bitcoin",
   ETH: "ethereum",
 } as const;
+
+// CoinGecko API Constants
+
