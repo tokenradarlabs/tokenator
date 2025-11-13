@@ -38,16 +38,16 @@ const cacheTimeouts = new Map<string, NodeJS.Timeout>();
  * @returns {string} The formatted number as a string (e.g., "1.23K", "4.56M", "7.89").
  *
  * @example
+ * // Returns "123.46"
+ * formatNumber(123.456, 2);
+ *
+ * @example
  * // Returns "1.23K"
  * formatNumber(1234.56);
  *
  * @example
  * // Returns "1.2K"
  * formatNumber(1234.56, 1);
- *
- * @example
- * // Returns "1.23K"
- * formatNumber(1234.56, 2);
  *
  * @example
  * // Returns "1.23M"
