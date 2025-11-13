@@ -118,7 +118,46 @@ function mapStatusToErrorType(status: number): CoinGeckoErrorType {
 }
 
 /**
- * Fetches price data from CoinGecko with detailed error context
+ * Fetches price data for a specific token from CoinGecko, including detailed market information.
+ * This function utilizes an in-memory cache to deduplicate frequent identical requests
+ * within a short timeframe (COINGECKO_CACHE_TTL_SECONDS).
+ *
+ * @param {string} tokenId - The CoinGecko token ID (e.g., 'scout-protocol-token', 'bitcoin').
+ * @returns {Promise<CoinGeckoFetchResult>} A promise that resolves to a `CoinGeckoFetchResult` object.
+ *   If `ok` is true, `data` contains `CoinGeckoPriceDetail`.
+ *   If `ok` is false, `errorType`, `status` (optional), and `message` provide error details.
+ *
+ * @example
+ * // Example 1: Successful fetch
+ * // const result = await fetchTokenPriceDetailed('bitcoin');
+ * // if (result.ok) {
+ * //   console.log(`Bitcoin price: $${result.data.usd}`);
+ * // } else {
+ * //   console.error(`Error fetching Bitcoin price: ${result.message}`);
+ * // }
+ *
+ * @example
+ * // Example 2: Handling an invalid token ID
+ * // const result = await fetchTokenPriceDetailed('invalid-token-id');
+ * // if (!result.ok && result.errorType === 'invalid_token') {
+ * //   console.warn(`Invalid token ID: ${result.message}`);
+ * // }
+ *
+ * @example
+ * // Example 3: Handling a rate limit error
+ * // const result = await fetchTokenPriceDetailed('ethereum');
+ * // if (!result.ok && result.errorType === 'rate_limited') {
+ * //   console.error(`Rate limit hit: ${result.message}`);
+ * // }
+ *
+ * @remarks
+ * The function first checks an in-memory cache. If a valid, unexpired entry is found,
+ * it returns the cached data. Otherwise, it makes a fresh API call to CoinGecko.
+ *
+ * Error handling includes network issues, HTTP errors (e.g., 404, 429, 500),
+ * and unexpected data structures from the CoinGecko API.
+ * The `CoinGeckoFetchResult` type provides a structured way to handle both
+ * successful responses and various error conditions.
  */
 export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeckoFetchResult> {
   // Check cache first
