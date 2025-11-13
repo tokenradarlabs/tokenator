@@ -5,6 +5,7 @@ import {
 } from 'discord.js';
 import { AlertDirection } from '../generated/prisma/client';
 import logger from '../utils/logger';
+import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { editPriceAlert, findPriceAlertById } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';
 import { getStandardizedTokenId } from '../utils/constants';
@@ -46,28 +47,19 @@ export async function handleEditPriceAlert(
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {
-    await interaction.reply({
-      content: 'This command can only be used in a server channel.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
     return;
   }
 
   if (!newDirection && !newValue) {
-    await interaction.reply({
-      content: 'Please provide either a new direction or a new value to edit the alert.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.editAlertNoChanges());
     return;
   }
 
   const existingAlert = await findPriceAlertById(alertId, guildId);
 
   if (!existingAlert) {
-    await interaction.reply({
-      content: `No price alert found with ID: ${alertId}`,
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.priceAlertNotFound(alertId));
     return;
   }
 
@@ -89,9 +81,6 @@ export async function handleEditPriceAlert(
     });
   } catch (error) {
     logger.error({ err: error }, 'Error in handleEditPriceAlert:');
-    await interaction.reply({
-      content: 'Sorry, there was an unexpected error. Please try again later.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }

@@ -5,6 +5,7 @@ import {
 } from 'discord.js';
 import { AlertDirection } from '../generated/prisma/client';
 import logger from '../utils/logger';
+import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { editVolumeAlert } from '../lib/alertcommands';
 
 export const editVolumeAlertCommand = new SlashCommandBuilder()
@@ -45,18 +46,12 @@ export async function handleEditVolumeAlert(
   );
 
   if (!guildId || !channelId) {
-    await interaction.reply({
-      content: 'This command can only be used in a server channel.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
     return;
   }
 
   if (newValue !== null && (newValue <= 0 || isNaN(newValue))) {
-    await interaction.reply({
-      content: 'The volume value must be a positive number.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.volumeValueNotPositive());
     return;
   }
 
@@ -77,9 +72,6 @@ export async function handleEditVolumeAlert(
     });
   } catch (error) {
     logger.error({ err: error }, 'Error in handleEditVolumeAlert:');
-    await interaction.reply({
-      content: 'Sorry, there was an unexpected error. Please try again later.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }

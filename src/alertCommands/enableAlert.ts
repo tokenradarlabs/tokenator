@@ -4,6 +4,7 @@ import {
   PermissionFlagsBits,
 } from 'discord.js';
 import logger from '../utils/logger';
+import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { enablePriceAlert } from '../lib/alertcommands';
 
 export const enablePriceAlertCommand = new SlashCommandBuilder()
@@ -37,18 +38,12 @@ export async function handleEnablePriceAlert(
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {
-    await interaction.reply({
-      content: 'This command can only be used in a server channel.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
     return;
   }
 
   if (!alertId && !enableType) {
-    await interaction.reply({
-      content: 'Please provide either an alert ID or an enable type (all, price, or volume).',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.enableAlertNoIdOrType());
     return;
   }
 
@@ -62,10 +57,7 @@ export async function handleEnablePriceAlert(
 
     if (result.message.includes('already enabled') || result.message.includes('no changes needed')) {
       const identifier = alertId ? `with ID \`${alertId}\`` : `of type \`${enableType}\``;
-      await interaction.reply({
-        content: `Alert ${identifier} is already enabled. No changes were made.`,
-        flags: 64,
-      });
+      await sendErrorReply(interaction, errorMessages.alertAlreadyEnabled(identifier));
     } else {
       await interaction.reply({
         content: result.message,
@@ -74,9 +66,6 @@ export async function handleEnablePriceAlert(
     }
   } catch (error) {
     logger.error({ err: error }, 'Error in handleEnablePriceAlert:');
-    await interaction.reply({
-      content: 'Sorry, there was an unexpected error. Please try again later.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }
