@@ -1,18 +1,10 @@
 import logger from './logger';
 import { config } from '../config';
-import { 
-  COINGECKO_API_CACHE_COOLDOWN_SECONDS_MIN, 
-  COINGECKO_API_CACHE_COOLDOWN_SECONDS_MAX, 
-  COINGECKO_API_FREE_RATE_LIMIT_PER_MINUTE, 
-  COINGECKO_API_PRO_RATE_LIMIT_PER_MINUTE, 
-  COINGECKO_API_PLAN, 
-  COINGECKO_CACHE_TTL_SECONDS 
-} from '../config';
 
 // Clamp COINGECKO_CACHE_TTL_SECONDS between min and max cooldown values
 const CACHE_TTL = Math.max(
-  COINGECKO_API_CACHE_COOLDOWN_SECONDS_MIN,
-  Math.min(COINGECKO_CACHE_TTL_SECONDS, COINGECKO_API_CACHE_COOLDOWN_SECONDS_MAX)
+  config.COINGECKO_API_CACHE_COOLDOWN_SECONDS_MIN,
+  Math.min(config.COINGECKO_CACHE_TTL_SECONDS, config.COINGECKO_API_CACHE_COOLDOWN_SECONDS_MAX)
 );
 
 const priceCache = new Map<string, { data: CoinGeckoPriceDetail; expiry: number }>();
@@ -200,7 +192,7 @@ export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeck
     logger.info(`[CoinGecko] Successfully fetched price for ${tokenId}: $${tokenData.usd}`);
 
     // Cache the successful response
-    const expiry = Date.now() + COINGECKO_CACHE_TTL_SECONDS * 1000;
+    const expiry = Date.now() + CACHE_TTL * 1000;
     priceCache.set(tokenId, { data: tokenData, expiry });
 
     // Clear any existing timeout and set a new one
@@ -211,7 +203,7 @@ export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeck
       priceCache.delete(tokenId);
       cacheTimeouts.delete(tokenId);
       logger.debug(`[CoinGecko] Cache for ${tokenId} expired and cleared.`);
-    }, COINGECKO_CACHE_TTL_SECONDS * 1000);
+    }, CACHE_TTL * 1000);
     cacheTimeouts.set(tokenId, timeout);
 
     return { ok: true, data: tokenData };

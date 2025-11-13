@@ -37,8 +37,4 @@ export const STANDARD_TOKEN_IDS = {
 } as const;
 
 // CoinGecko API Constants
-export const COINGECKO_API_FREE_RATE_LIMIT_PER_MINUTE = 30; // Calls per minute for free plan
-export const COINGECKO_API_PRO_RATE_LIMIT_PER_MINUTE = 500; // Calls per minute for pro plan (minimum)
-export const COINGECKO_API_CACHE_COOLDOWN_SECONDS_MIN = 60; // Minimum cache cooldown in seconds (1 minute)
-export const COINGECKO_API_CACHE_COOLDOWN_SECONDS_MAX = 300; // Maximum cache cooldown in seconds (5 minutes)
 
