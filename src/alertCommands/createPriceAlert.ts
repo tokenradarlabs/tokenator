@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import logger from '../utils/logger';
+import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { createPriceAlert } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';
 
@@ -62,22 +63,16 @@ export async function handleCreatePriceAlert(
   const validatedPriceValue = validationResult.parsedPriceValue;
 
   if (validatedPriceValue === undefined) {
-    await interaction.reply({ content: 'Internal error validating price value.', flags: 64 });
+    await sendErrorReply(interaction, errorMessages.internalPriceValidation());
     return;
   }
   if (!guildId) {
-    await interaction.reply({
-      content: 'This command can only be used in a server.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
     return;
   }
 
   if (!channelId) {
-    await interaction.reply({
-      content: 'This command can only be used in a channel.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.commandOnlyInTextChannel());
     return;
   }
 
@@ -101,9 +96,6 @@ export async function handleCreatePriceAlert(
     }
   } catch (error) {
     logger.error(error, 'Error in handleCreatePriceAlert');
-    await interaction.reply({
-      content: 'Sorry, there was an unexpected error. Please try again later.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }

@@ -2,6 +2,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, ChannelType } from 'd
 import { createVolumeAlert } from '../lib/alertcommands';
 import { getStandardizedTokenId } from '../utils/constants';
 import logger from '../utils/logger';
+import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 
 export const createVolumeAlertCommand = new SlashCommandBuilder()
   .setName('create-volume-alert')
@@ -59,29 +60,23 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     const guildId = interaction.guildId;
     const channelId = interaction.channelId;
 
-    const sendErrorReply = async (content: string) => {
-      if (interaction.deferred) {
-        await interaction.editReply({ content });
-      } else {
-        await interaction.reply({ content, ephemeral: true });
-      }
-    };
+
 
     if (!guildId) {
-      await sendErrorReply('❌ This command can only be used in servers, not in DMs.');
+      await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
       return;
     }
 
     // Check if it's a text channel
     const channel = interaction.channel;
     if (!channel || channel.type !== ChannelType.GuildText) {
-      await sendErrorReply('❌ This command can only be used in text channels.');
+      await sendErrorReply(interaction, errorMessages.commandOnlyInTextChannel());
       return;
     }
 
     const standardizedTokenId = getStandardizedTokenId(token);
     if (!standardizedTokenId) {
-      await sendErrorReply('❌ Invalid token. Please use scout-protocol-token, bitcoin, or ethereum.');
+      await sendErrorReply(interaction, errorMessages.invalidToken());
       return;
     }
 
@@ -124,12 +119,6 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
       userId: interaction.user.id,
     }, '[VolumeAlertCommand] Error executing volume alert command');
 
-    const errorMessage = '❌ An unexpected error occurred while creating the volume alert. Please try again later.';
-    
-    if (interaction.deferred) {
-      await interaction.editReply({ content: errorMessage });
-    } else {
-      await interaction.reply({ content: errorMessage, ephemeral: true });
-    }
+    await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }

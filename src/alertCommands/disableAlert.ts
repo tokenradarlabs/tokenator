@@ -4,6 +4,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import logger from "../utils/logger";
+import { sendErrorReply, errorMessages } from "../utils/errorMessageUtils";
 import { disablePriceAlert } from "../lib/alertcommands";
 
 export const disablePriceAlertCommand = new SlashCommandBuilder()
@@ -37,10 +38,7 @@ export async function handleDisablePriceAlert(
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {
-    await interaction.reply({
-      content: "This command can only be used in a server channel.",
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
     return;
   }
 
@@ -58,9 +56,6 @@ export async function handleDisablePriceAlert(
     });
   } catch (error) {
     logger.error({ err: error }, 'Error in handleDisablePriceAlert:');
-    await interaction.reply({
-      content: 'Sorry, there was an unexpected error. Please try again later.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 } 

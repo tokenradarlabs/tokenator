@@ -4,6 +4,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import logger from "../utils/logger";
+import { sendErrorReply, errorMessages } from "../utils/errorMessageUtils";
 import { deleteAlert, findPriceAlertById, findVolumeAlertById } from "../lib/alertcommands";
 
 export const deleteAlertCommand = new SlashCommandBuilder()
@@ -44,18 +45,12 @@ export async function handleDeleteAlert(
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {
-    await interaction.reply({
-      content: "This command can only be used in a server channel.",
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
     return;
   }
 
   if (alertId && !alertId.match(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)) {
-    await interaction.reply({
-      content: "Invalid alert ID format. Please provide a valid UUID.",
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.invalidAlertIdFormat());
     return;
   }
 
@@ -65,10 +60,7 @@ export async function handleDeleteAlert(
       const volumeAlert = await findVolumeAlertById(alertId, guildId);
 
       if (!priceAlert && !volumeAlert) {
-        await interaction.reply({
-          content: `No alert found with ID: \`${alertId}\`.`,
-          flags: 64,
-        });
+        await sendErrorReply(interaction, errorMessages.alertNotFound(alertId));
         return;
       }
     }
@@ -86,9 +78,6 @@ export async function handleDeleteAlert(
     });
   } catch (error) {
     logger.error(error, 'Error in handleDeleteAlert:');
-    await interaction.reply({
-      content: 'Sorry, there was an unexpected error. Please try again later.',
-      flags: 64,
-    });
+    await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }
