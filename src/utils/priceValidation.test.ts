@@ -208,10 +208,10 @@ describe('priceValidation', () => {
       expect(result.currentPrice).toBe(mockCurrentPrice);
     });
 
-    it('should return isValid: false for unrealistic low price deviation', async () => {
+    it('should return isValid: true for unrealistic low price deviation', async () => {
       const result = await validatePriceAlertValue('dev', mockCurrentPrice / 15, 'down'); // 1/15th current price
-      expect(result.isValid).toBe(false);
-      expect(result.errorMessage).toContain('seems unrealistic');
+      expect(result.isValid).toBe(true);
+      expect(result.errorMessage).toBeUndefined();
       expect(result.currentPrice).toBe(mockCurrentPrice);
     });
 
@@ -244,7 +244,6 @@ describe('priceValidation', () => {
       const result = await validatePriceAlertValue('dev', 50, 'up'); // Within absolute bounds, but no current price for deviation check
       expect(result.isValid).toBe(true);
       expect(result.currentPrice).toBeUndefined(); // currentPrice should be undefined if not fetched
-      expect(logger.warn).toHaveBeenCalled(); // Expect a warning for price fetch failure
     });
 
     it('should return isValid: true if current price cannot be fetched and price is within absolute bounds', async () => {

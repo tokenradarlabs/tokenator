@@ -1,6 +1,7 @@
 module.exports = {
+  babelrcRoots: ['.'],
   presets: [
-    [require.resolve('@babel/preset-env'), { targets: { node: 'current' } }],
-    require.resolve('@babel/preset-typescript'),
+    ['@babel/preset-env', { targets: { node: 'current' } }],
+    '@babel/preset-typescript',
   ],
 };
