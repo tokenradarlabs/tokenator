@@ -24,15 +24,11 @@ export const errorMessages = {
     flags: ERROR_FLAG,
   }),
   alertNotFound: (alertId: string) => ({
-    content: `❌ No alert found with ID: 
-${alertId}
-.`, 
+    content: `❌ No alert found with ID: ${alertId}.`,
     flags: ERROR_FLAG,
   }),
   priceAlertNotFound: (alertId: string) => ({
-    content: `❌ No price alert found with ID: 
-${alertId}
-.`, 
+    content: `❌ No price alert found with ID: ${alertId}.`,
     flags: ERROR_FLAG,
   }),
   editAlertNoChanges: () => ({
@@ -48,9 +44,7 @@ ${alertId}
     flags: ERROR_FLAG,
   }),
   alertAlreadyEnabled: (identifier: string) => ({
-    content: `ℹ️ Alert 
-${identifier}
- is already enabled. No changes were made.`, 
+    content: `ℹ️ Alert ${identifier} is already enabled. No changes were made.`,
     flags: ERROR_FLAG,
   }),
   internalPriceValidation: () => ({
