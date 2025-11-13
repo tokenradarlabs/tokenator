@@ -63,7 +63,12 @@ async function cleanupOrphanedAlerts(client: Client) {
 
     for (const alert of allAlerts) {
       try {
-        const channel = await client.channels.fetch(alert.channelId);
+        const channel = await retry(
+          async () => client.channels.fetch(alert.channelId),
+          MAX_RETRIES,
+          INITIAL_RETRY_DELAY_MS,
+          `Discord channel fetch for ${alert.channelId}`
+        );
         if (!channel) {
           await prisma.alert.delete({
             where: { id: alert.id },
