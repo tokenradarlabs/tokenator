@@ -2,6 +2,26 @@ import logger from './logger';
 import { config } from '../config';
 import 'dotenv/config';
 
+/**
+ * @file CoinGecko Utility Module
+ * @module utils/coinGecko
+ * @description This module provides utilities for interacting with the CoinGecko API,
+ * including fetching token prices and handling API-related errors.
+ *
+ * It implements an in-memory cache for CoinGecko API responses to deduplicate
+ * frequent identical requests. This cache is designed for short-term deduplication
+ * within a single run and gracefully falls back to a fresh API call on cache failures.
+ *
+ * @property {number} COINGECKO_CACHE_TTL_SECONDS - The time-to-live (TTL) for cache entries in seconds.
+ *                                                  Cache entries expire after this duration.
+ * @property {Map<string, { data: CoinGeckoPriceDetail; expiry: number }>} priceCache -
+ *           The in-memory cache storing CoinGecko price data. Keys are token IDs,
+ *           values are objects containing the price detail and an expiry timestamp.
+ * @property {Map<string, NodeJS.Timeout>} cacheTimeouts -
+ *           A map to store timeout IDs for each cached token, allowing for clearing
+ *           timeouts if a token is re-cached before its previous expiry.
+ */
+
 // In-memory cache for CoinGecko API responses to deduplicate frequent identical requests.
 // This cache is tiny, optional, and designed for short-term deduplication within a single run.
 // On cache failures (e.g., unexpected data structure), it will gracefully fallback to a fresh API call.
@@ -10,7 +30,29 @@ const COINGECKO_CACHE_TTL_SECONDS = 5; // Cache entries expire after 5 seconds
 const priceCache = new Map<string, { data: CoinGeckoPriceDetail; expiry: number }>();
 const cacheTimeouts = new Map<string, NodeJS.Timeout>();
 
-// Utility to format numbers for display (e.g., 1.2K, 1.2M)
+/**
+ * Formats a number for display, using 'K' for thousands and 'M' for millions.
+ *
+ * @param {number} num - The number to format.
+ * @param {number} [decimals=2] - The number of decimal places to include. Defaults to 2.
+ * @returns {string} The formatted number as a string (e.g., "1.23K", "4.56M", "7.89").
+ *
+ * @example
+ * // Returns "123.46"
+ * formatNumber(123.456, 2);
+ *
+ * @example
+ * // Returns "1.23K"
+ * formatNumber(1234.56);
+ *
+ * @example
+ * // Returns "1.2K"
+ * formatNumber(1234.56, 1);
+ *
+ * @example
+ * // Returns "1.23M"
+ * formatNumber(1234567.89);
+ */
 export function formatNumber(num: number, decimals: number = 2): string {
     if (num >= 1000000) {
         return `${(num / 1000000).toFixed(decimals)}M`;
@@ -48,6 +90,24 @@ export type CoinGeckoFetchResult =
   | { ok: true; data: CoinGeckoPriceDetail }
   | { ok: false; errorType: CoinGeckoErrorType; status?: number; message: string };
 
+/**
+ * Maps an HTTP status code to a CoinGeckoErrorType.
+ *
+ * @param {number} status - The HTTP status code received from the CoinGecko API.
+ * @returns {CoinGeckoErrorType} The corresponding error type.
+ *
+ * @example
+ * // Returns 'rate_limited'
+ * mapStatusToErrorType(429);
+ *
+ * @example
+ * // Returns 'server_error'
+ * mapStatusToErrorType(500);
+ *
+ * @example
+ * // Returns 'unknown'
+ * mapStatusToErrorType(418); // I'm a teapot
+ */
 function mapStatusToErrorType(status: number): CoinGeckoErrorType {
   if (status === 429) return 'rate_limited';
   if (status === 401) return 'unauthorized';
@@ -58,7 +118,46 @@ function mapStatusToErrorType(status: number): CoinGeckoErrorType {
 }
 
 /**
- * Fetches price data from CoinGecko with detailed error context
+ * Fetches price data for a specific token from CoinGecko, including detailed market information.
+ * This function utilizes an in-memory cache to deduplicate frequent identical requests
+ * within a short timeframe (COINGECKO_CACHE_TTL_SECONDS).
+ *
+ * @param {string} tokenId - The CoinGecko token ID (e.g., 'scout-protocol-token', 'bitcoin').
+ * @returns {Promise<CoinGeckoFetchResult>} A promise that resolves to a `CoinGeckoFetchResult` object.
+ *   If `ok` is true, `data` contains `CoinGeckoPriceDetail`.
+ *   If `ok` is false, `errorType`, `status` (optional), and `message` provide error details.
+ *
+ * @example
+ * // Example 1: Successful fetch
+ * // const result = await fetchTokenPriceDetailed('bitcoin');
+ * // if (result.ok) {
+ * //   console.log(`Bitcoin price: $${result.data.usd}`);
+ * // } else {
+ * //   console.error(`Error fetching Bitcoin price: ${result.message}`);
+ * // }
+ *
+ * @example
+ * // Example 2: Handling an invalid token ID
+ * // const result = await fetchTokenPriceDetailed('invalid-token-id');
+ * // if (!result.ok && result.errorType === 'invalid_token') {
+ * //   console.warn(`Invalid token ID: ${result.message}`);
+ * // }
+ *
+ * @example
+ * // Example 3: Handling a rate limit error
+ * // const result = await fetchTokenPriceDetailed('ethereum');
+ * // if (!result.ok && result.errorType === 'rate_limited') {
+ * //   console.error(`Rate limit hit: ${result.message}`);
+ * // }
+ *
+ * @remarks
+ * The function first checks an in-memory cache. If a valid, unexpired entry is found,
+ * it returns the cached data. Otherwise, it makes a fresh API call to CoinGecko.
+ *
+ * Error handling includes network issues, HTTP errors (e.g., 404, 429, 500),
+ * and unexpected data structures from the CoinGecko API.
+ * The `CoinGeckoFetchResult` type provides a structured way to handle both
+ * successful responses and various error conditions.
  */
 export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeckoFetchResult> {
   // Check cache first
