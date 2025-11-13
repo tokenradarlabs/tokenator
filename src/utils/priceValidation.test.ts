@@ -1,31 +1,21 @@
-import {
-  _validateNumericInput,
-  _checkAbsoluteBounds,
-  validatePriceAlertValue,
-  getTokenPriceBounds,
-  PriceValidationResult,
-} from './priceValidation';
-import { getLatestTokenPriceFromDatabase } from './databasePrice';
-import { fetchTokenPrice } from './coinGecko';
+import { validatePriceAlert, validateVolumeAlert, validateTokenIdAndPrice } from './priceValidation';
 import { getStandardizedTokenId } from './constants';
 import { formatPrice } from './priceFormatter';
-import logger from './logger';
+import { getLatestTokenPrice, getCoinGeckoTokenPrice } from './coinGecko';
+import { CoinGeckoPriceDetail } from '../types/coinGecko';
 
-jest.mock('./databasePrice', () => ({
-  getLatestTokenPriceFromDatabase: jest.fn(),
-}));
-jest.mock('./coinGecko', () => ({
-  fetchTokenPrice: jest.fn(),
-}));
+// Mock external dependencies
 jest.mock('./constants', () => ({
   getStandardizedTokenId: jest.fn(),
 }));
+
 jest.mock('./priceFormatter', () => ({
   formatPrice: jest.fn(),
 }));
-jest.mock('./logger', () => ({
-  warn: jest.fn(),
-  info: jest.fn(),
+
+jest.mock('./coinGecko', () => ({
+  getLatestTokenPrice: jest.fn(),
+  getCoinGeckoTokenPrice: jest.fn(),
 }));
 
 describe('priceValidation', () => {
