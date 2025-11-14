@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction,
   EmbedBuilder,
 } from "discord.js";
-import logger, { createContextualLogger } from "../utils/logger";
+import { createContextualLogger } from "../utils/logger";
 import { AlertDirection } from "../generated/prisma/client";
 import { listAlerts, formatAlertsForDisplay } from "../lib/alertcommands";
 
@@ -134,7 +134,7 @@ export async function handleListAlerts(
 
     await interaction.reply({ embeds: [embed] });
   } catch (error) {
-    contextualLogger.error({ err: error }, 'Error in handleListPriceAlerts:');
+    contextualLogger.error({ err: error }, 'Error in handleListAlerts:');
     await interaction.reply({
       content: "Sorry, there was an unexpected error. Please try again later.",
       flags: 64,

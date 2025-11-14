@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
 } from 'discord.js';
-import logger, { createContextualLogger } from '../utils/logger';
+import { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { enablePriceAlert } from '../lib/alertcommands';
 import { sanitizeString } from '../utils/inputSanitization';

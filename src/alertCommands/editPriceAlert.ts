@@ -4,7 +4,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { AlertDirection } from '../generated/prisma/client';
-import logger, { createContextualLogger } from '../utils/logger';
+import { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { editPriceAlert, findPriceAlertById } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';

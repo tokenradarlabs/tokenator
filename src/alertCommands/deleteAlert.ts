@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
 } from "discord.js";
-import logger, { createContextualLogger } from "../utils/logger";
+import { createContextualLogger } from "../utils/logger";
 import { sendErrorReply, errorMessages } from "../utils/errorMessageUtils";
 import { deleteAlert, findPriceAlertById, findVolumeAlertById } from "../lib/alertcommands";
 import { sanitizeString, sanitizeBoolean } from "../utils/inputSanitization";
@@ -84,7 +84,7 @@ export async function handleDeleteAlert(
       flags: 64,
     });
   } catch (error) {
-    contextualLogger.error(error, 'Error in handleDeleteAlert:');
+    contextualLogger.error({ err: error }, 'Error in handleDeleteAlert:');
     await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }

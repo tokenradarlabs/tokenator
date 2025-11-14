@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
-import logger, { createContextualLogger } from '../utils/logger';
+import { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { createPriceAlert } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';
@@ -107,7 +107,7 @@ export async function handleCreatePriceAlert(
       });
     }
   } catch (error) {
-    contextualLogger.error(error, 'Error in handleCreatePriceAlert');
+    contextualLogger.error({ err: error }, 'Error in handleCreatePriceAlert');
     await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }
