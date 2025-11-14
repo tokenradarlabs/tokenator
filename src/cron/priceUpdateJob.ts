@@ -8,6 +8,7 @@ import { STANDARD_TOKEN_IDS } from '../utils/constants';
 import { ALERT_COOLDOWN_PERIOD_MS } from '../utils/alertUtils';
 import { formatPriceForDisplay } from '../utils/priceFormatter';
 import { formatNumber } from '../utils/coinGecko';
+import { hasCrossedThreshold } from '../utils/priceComparison';
 
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000; // 1 second
@@ -185,41 +186,7 @@ async function checkPriceAlertsWithTransaction(
       const { direction, value } = alert.priceAlert;
       let shouldTrigger = false;
 
-      if (previousPrice) {
-        if (
-          direction === 'up' &&
-          previousPrice.price < value &&
-          currentPrice >= value
-        ) {
-          shouldTrigger = true;
-          logger.info(
-            `[CronJob-PriceAlert] Triggering UP alert: ${formatPriceForDisplay(previousPrice.price)} -> ${formatPriceForDisplay(currentPrice)} (threshold: ${formatPriceForDisplay(value)})`
-          );
-        } else if (
-          direction === 'down' &&
-          previousPrice.price > value &&
-          currentPrice <= value
-        ) {
-          shouldTrigger = true;
-          logger.info(
-            `[CronJob-PriceAlert] Triggering DOWN alert: ${formatPriceForDisplay(previousPrice.price)} -> ${formatPriceForDisplay(currentPrice)} (threshold: ${formatPriceForDisplay(value)})`
-          );
-        }
-      } else {
-        if (direction === 'up' && currentPrice >= value) {
-          shouldTrigger = true;
-          logger.info(
-            `[CronJob-PriceAlert] Triggering UP alert (no previous price): ${formatPriceForDisplay(currentPrice)} >= ${formatPriceForDisplay(value)}`
-          );
-        } else if (direction === 'down' && currentPrice <= value) {
-          shouldTrigger = true;
-          logger.info(
-            `[CronJob-PriceAlert] Triggering DOWN alert (no previous price): ${formatPriceForDisplay(currentPrice)} <= ${formatPriceForDisplay(value)}`
-          );
-        }
-      }
-
-      if (shouldTrigger) {
+      if (hasCrossedThreshold(currentPrice, previousPrice?.price ?? null, value, direction)) {
         try {
           const updatedAlert = await tx.alert.updateMany({
             where: {
