@@ -610,8 +610,11 @@ async function updateVolumeMetrics(client: Client) {
   );
 }
 
+import { ScheduledTask } from 'node-cron';
+
 let isMarketMetricsJobRunning = false;
 let isVolumeMetricsJobRunning = false;
+const scheduledTasks: ScheduledTask[] = [];
 
 export function startDevPriceUpdateJob(client: Client) {
   Promise.all([
@@ -623,7 +626,7 @@ export function startDevPriceUpdateJob(client: Client) {
   });
 
   try {
-    cron.schedule(
+    const marketMetricsJob = cron.schedule(
       '* * * * *',
       async () => {
         if (isMarketMetricsJobRunning) {
@@ -646,12 +649,13 @@ export function startDevPriceUpdateJob(client: Client) {
         timezone: 'UTC',
       }
     );
+    scheduledTasks.push(marketMetricsJob);
   } catch (error) {
     logger.error('[CronJob] Error scheduling market metrics cron job:', error);
   }
 
   try {
-    cron.schedule(
+    const cleanupJob = cron.schedule(
       '0 * * * *',
       () => {
         cleanupOrphanedAlerts(client).catch(error => {
@@ -665,13 +669,14 @@ export function startDevPriceUpdateJob(client: Client) {
         timezone: 'UTC',
       }
     );
+    scheduledTasks.push(cleanupJob);
   } catch (error) {
     logger.error('[CronJob] Error scheduling cleanup cron job:', error);
   }
 
   // Daily volume metrics update (runs at 00:00 UTC every day)
   try {
-    cron.schedule(
+    const volumeMetricsJob = cron.schedule(
       '0 0 * * *',
       async () => {
         if (isVolumeMetricsJobRunning) {
@@ -694,7 +699,14 @@ export function startDevPriceUpdateJob(client: Client) {
         timezone: 'UTC',
       }
     );
+    scheduledTasks.push(volumeMetricsJob);
   } catch (error) {
     logger.error('[CronJob] Error scheduling volume metrics cron job:', error);
   }
+}
+
+export function stopAllCronJobs(): void {
+  logger.info('[CronJob] Stopping all scheduled cron jobs...');
+  scheduledTasks.forEach(task => task.stop());
+  logger.info('[CronJob] All scheduled cron jobs stopped.');
 }

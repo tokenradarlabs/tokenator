@@ -1,36 +1,51 @@
-// Configure dotenv externally, e.g., via a `start` script: `node -r dotenv/config dist/index.js`
-import {
-  Client,
-  GatewayIntentBits,
-  Partials,
-  REST,
-  Routes,
-  SlashCommandBuilder,
-  ChatInputCommandInteraction,
-  ApplicationCommandDataResolvable,
-} from 'discord.js';
-import { config } from './config';
-import logger from './utils/logger';
+import { startDevPriceUpdateJob, stopAllCronJobs } from './cron/priceUpdateJob';
+import prisma from './utils/prisma';
+
+let isShuttingDown = false;
+
+async function gracefulShutdown(signal: string, exitCode: number): Promise<void> {
+  if (isShuttingDown) {
+    logger.info(`Shutdown already in progress. Ignoring signal: ${signal}`);
+    return;
+  }
+
+  isShuttingDown = true;
+  logger.info(`Received signal ${signal}. Initiating graceful shutdown...`);
+
+  try {
+    // Stop all cron jobs
+    stopAllCronJobs();
+
+    // Disconnect Prisma client
+    await prisma.$disconnect();
+    logger.info('Prisma client disconnected.');
+
+    logger.info('Graceful shutdown complete. Exiting.');
+    process.exit(exitCode);
+  } catch (error) {
+    logger.error('Error during graceful shutdown:', error);
+    process.exit(1);
+  }
+}
 
 // --- Global Error Handling ---
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Application specific logging, throwing an error, or other logic here
-  // In a production environment, you might want to send this to an error tracking service.
-  // For now, we'll exit to prevent the application from running in an unstable state.
-  process.exit(1);
+  // Trigger graceful shutdown with an error exit code
+  gracefulShutdown('unhandledRejection', 1);
 });
 
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
-  // Perform any cleanup here if necessary
-  // For example, closing database connections, flushing logs.
-  // Then, exit the process.
-  process.exit(1);
+  // Trigger graceful shutdown with an error exit code
+  gracefulShutdown('uncaughtException', 1);
 });
 
+// Handle termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM', 0));
+process.on('SIGINT', () => gracefulShutdown('SIGINT', 0));
+
 // --- End Global Error Handling ---
-import { startDevPriceUpdateJob } from './cron/priceUpdateJob';
 import {
   formatNumber,
   fetchTokenPriceDetailed,
