@@ -51,6 +51,10 @@ export const errorMessages = {
     content: '❌ Internal error validating price value.',
     flags: ERROR_FLAG,
   }),
+  invalidInput: () => ({
+    content: '❌ Invalid input provided. Please check your command and try again.',
+    flags: ERROR_FLAG,
+  }),
 };
 
 export async function sendErrorReply(

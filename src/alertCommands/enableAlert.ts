@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
 } from 'discord.js';
-import logger from '../utils/logger';
+import { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { enablePriceAlert } from '../lib/alertcommands';
 import { sanitizeString } from '../utils/inputSanitization';
@@ -37,6 +37,12 @@ export async function handleEnablePriceAlert(
   const alertId = sanitizeString(interaction.options.getString('id'));
   const enableType = sanitizeString(interaction.options.getString('enable-type'));
   const { guildId, channelId } = interaction;
+  const contextualLogger = createContextualLogger({
+    userId: interaction.user.id,
+    guildId: guildId || undefined,
+    channelId: channelId || undefined,
+    commandName: 'enable-alert',
+  });
 
   if (!guildId || !channelId) {
     await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
@@ -66,7 +72,7 @@ export async function handleEnablePriceAlert(
       });
     }
   } catch (error) {
-    logger.error({ err: error }, 'Error in handleEnablePriceAlert:');
+    contextualLogger.error({ err: error }, 'Error in handleEnablePriceAlert:');
     await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }

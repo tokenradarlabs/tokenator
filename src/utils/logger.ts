@@ -43,4 +43,13 @@ const logger = pino(
   transport,
 );
 
+export const createContextualLogger = (context: {
+  userId?: string;
+  guildId?: string;
+  channelId?: string;
+  commandName?: string;
+}) => {
+  return logger.child(context);
+};
+
 export default logger;

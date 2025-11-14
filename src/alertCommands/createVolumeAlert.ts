@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, ChannelType } from 'discord.js';
 import { createVolumeAlert } from '../lib/alertcommands';
 import { getStandardizedTokenId } from '../utils/constants';
-import logger from '../utils/logger';
+import { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
 
@@ -51,6 +51,14 @@ export const createVolumeAlertCommand = new SlashCommandBuilder()
   .toJSON();
 
 export async function handleCreateVolumeAlert(interaction: ChatInputCommandInteraction) {
+  const guildId = interaction.guildId;
+  const channelId = interaction.channelId;
+  const contextualLogger = createContextualLogger({
+    userId: interaction.user.id,
+    guildId: guildId || undefined,
+    channelId: channelId || undefined,
+    commandName: 'create-volume-alert',
+  });
   try {
     await interaction.deferReply();
 
@@ -58,8 +66,6 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     const direction = sanitizeString(interaction.options.getString('direction', true)) as 'up' | 'down' | null;
     const volume = sanitizeNumber(interaction.options.getNumber('volume', true));
     const timeframe = sanitizeString(interaction.options.getString('timeframe', true)) as '24h' | '7d' | '30d' | null;
-    const guildId = interaction.guildId;
-    const channelId = interaction.channelId;
 
     if (token === null || direction === null || volume === null || timeframe === null) {
       await sendErrorReply(interaction, errorMessages.invalidInput());
@@ -101,17 +107,13 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     });
 
     if (result.success) {
-      logger.info({        guildId,
-        channelId,
-        userId: interaction.user.id,
+      contextualLogger.info({
         token,
         direction,
         volume,
       }, `[VolumeAlertCommand] Volume alert created successfully`);
     } else {
-      logger.warn({        guildId,
-        channelId,
-        userId: interaction.user.id,
+      contextualLogger.warn({
         token,
         direction,
         volume,
@@ -120,10 +122,7 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     }
 
   } catch (error) {
-    logger.error({ err: error,        guildId: interaction.guildId,
-      channelId: interaction.channelId,
-      userId: interaction.user.id,
-    }, '[VolumeAlertCommand] Error executing volume alert command');
+    contextualLogger.error({ err: error }, '[VolumeAlertCommand] Error executing volume alert command');
 
     await sendErrorReply(interaction, errorMessages.unexpectedError());
   }

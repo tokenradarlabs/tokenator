@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
 } from "discord.js";
-import logger from "../utils/logger";
+import { createContextualLogger } from "../utils/logger";
 import { sendErrorReply, errorMessages } from "../utils/errorMessageUtils";
 import { deleteAlert, findPriceAlertById, findVolumeAlertById } from "../lib/alertcommands";
 import { sanitizeString, sanitizeBoolean } from "../utils/inputSanitization";
@@ -44,6 +44,12 @@ export async function handleDeleteAlert(
   const deleteDisabled = sanitizeBoolean(interaction.options.getBoolean("delete-disabled"));
   const type = sanitizeString(interaction.options.getString("type")) as 'price' | 'volume' | 'all' | null;
   const { guildId, channelId } = interaction;
+  const contextualLogger = createContextualLogger({
+    userId: interaction.user.id,
+    guildId: guildId || undefined,
+    channelId: channelId || undefined,
+    commandName: 'delete-alert',
+  });
 
   if (!guildId || !channelId) {
     await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());
@@ -78,7 +84,7 @@ export async function handleDeleteAlert(
       flags: 64,
     });
   } catch (error) {
-    logger.error(error, 'Error in handleDeleteAlert:');
+    contextualLogger.error({ err: error }, 'Error in handleDeleteAlert:');
     await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }
