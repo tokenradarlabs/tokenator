@@ -34,8 +34,8 @@ export const enablePriceAlertCommand = new SlashCommandBuilder()
 export async function handleEnablePriceAlert(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  const alertId = interaction.options.getString('id');
-  const enableType = interaction.options.getString('enable-type');
+  const alertId = sanitizeString(interaction.options.getString('id'));
+  const enableType = sanitizeString(interaction.options.getString('enable-type'));
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {
