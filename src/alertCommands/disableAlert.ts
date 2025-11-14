@@ -6,6 +6,7 @@ import {
 import logger from "../utils/logger";
 import { sendErrorReply, errorMessages } from "../utils/errorMessageUtils";
 import { disablePriceAlert } from "../lib/alertcommands";
+import { sanitizeString } from "../utils/inputSanitization";
 
 export const disablePriceAlertCommand = new SlashCommandBuilder()
   .setName("disable-alert")
@@ -33,8 +34,8 @@ export const disablePriceAlertCommand = new SlashCommandBuilder()
 export async function handleDisablePriceAlert(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  const alertId = interaction.options.getString("id");
-  const disableType = interaction.options.getString("disable-type");
+  const alertId = sanitizeString(interaction.options.getString("id"));
+  const disableType = sanitizeString(interaction.options.getString("disable-type"));
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {

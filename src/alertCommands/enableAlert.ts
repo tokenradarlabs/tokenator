@@ -6,6 +6,7 @@ import {
 import logger from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { enablePriceAlert } from '../lib/alertcommands';
+import { sanitizeString } from '../utils/inputSanitization';
 
 export const enablePriceAlertCommand = new SlashCommandBuilder()
   .setName('enable-alert')

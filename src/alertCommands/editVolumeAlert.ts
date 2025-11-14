@@ -7,6 +7,7 @@ import { AlertDirection } from '../generated/prisma/client';
 import logger from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { editVolumeAlert } from '../lib/alertcommands';
+import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
 
 export const editVolumeAlertCommand = new SlashCommandBuilder()
   .setName('edit-volume-alert')
@@ -36,10 +37,15 @@ export const editVolumeAlertCommand = new SlashCommandBuilder()
 export async function handleEditVolumeAlert(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  const alertId = interaction.options.getString('id', true);
-  const newDirection = interaction.options.getString('direction') as AlertDirection | null;
-  const newValue = interaction.options.getNumber('value');
+  const alertId = sanitizeString(interaction.options.getString('id', true));
+  const newDirection = sanitizeString(interaction.options.getString('direction')) as AlertDirection | null;
+  const newValue = sanitizeNumber(interaction.options.getNumber('value'));
   const { guildId, channelId } = interaction;
+
+  if (alertId === null) {
+    await sendErrorReply(interaction, errorMessages.invalidInput());
+    return;
+  }
 
   logger.debug(
     `handleEditVolumeAlert: alertId=${alertId}, newDirection=${newDirection}, newValue=${newValue}, guildId=${guildId}, channelId=${channelId}`
