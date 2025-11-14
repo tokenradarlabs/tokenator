@@ -6,6 +6,7 @@ import {
 import logger from "../utils/logger";
 import { sendErrorReply, errorMessages } from "../utils/errorMessageUtils";
 import { deleteAlert, findPriceAlertById, findVolumeAlertById } from "../lib/alertcommands";
+import { sanitizeString, sanitizeBoolean } from "../utils/inputSanitization";
 
 export const deleteAlertCommand = new SlashCommandBuilder()
   .setName("delete-alert")
@@ -39,9 +40,9 @@ export const deleteAlertCommand = new SlashCommandBuilder()
 export async function handleDeleteAlert(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  const alertId = interaction.options.getString("id");
-  const deleteDisabled = interaction.options.getBoolean("delete-disabled");
-  const type = interaction.options.getString("type") as 'price' | 'volume' | 'all' | null;
+  const alertId = sanitizeString(interaction.options.getString("id"));
+  const deleteDisabled = sanitizeBoolean(interaction.options.getBoolean("delete-disabled"));
+  const type = sanitizeString(interaction.options.getString("type")) as 'price' | 'volume' | 'all' | null;
   const { guildId, channelId } = interaction;
 
   if (!guildId || !channelId) {

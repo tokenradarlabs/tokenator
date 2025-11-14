@@ -3,6 +3,7 @@ import { createVolumeAlert } from '../lib/alertcommands';
 import { getStandardizedTokenId } from '../utils/constants';
 import logger from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
+import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
 
 export const createVolumeAlertCommand = new SlashCommandBuilder()
   .setName('create-volume-alert')
@@ -53,12 +54,17 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
   try {
     await interaction.deferReply();
 
-    const token = interaction.options.getString('token', true);
-    const direction = interaction.options.getString('direction', true) as 'up' | 'down';
-    const volume = interaction.options.getNumber('volume', true);
-    const timeframe = interaction.options.getString('timeframe', true) as '24h' | '7d' | '30d';
+    const token = sanitizeString(interaction.options.getString('token', true));
+    const direction = sanitizeString(interaction.options.getString('direction', true)) as 'up' | 'down' | null;
+    const volume = sanitizeNumber(interaction.options.getNumber('volume', true));
+    const timeframe = sanitizeString(interaction.options.getString('timeframe', true)) as '24h' | '7d' | '30d' | null;
     const guildId = interaction.guildId;
     const channelId = interaction.channelId;
+
+    if (token === null || direction === null || volume === null || timeframe === null) {
+      await sendErrorReply(interaction, errorMessages.invalidInput());
+      return;
+    }
 
 
 

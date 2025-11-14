@@ -10,6 +10,7 @@ import { editPriceAlert, findPriceAlertById } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';
 import { getStandardizedTokenId } from '../utils/constants';
 import { formatPrice } from '../utils/priceFormatter';
+import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
 
 export const editPriceAlertCommand = new SlashCommandBuilder()
   .setName('edit-price-alert')
@@ -39,12 +40,17 @@ export const editPriceAlertCommand = new SlashCommandBuilder()
 export async function handleEditPriceAlert(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  const alertId = interaction.options.getString('id', true);
-  const newDirection = interaction.options.getString(
+  const alertId = sanitizeString(interaction.options.getString('id', true));
+  const newDirection = sanitizeString(interaction.options.getString(
     'direction'
-  ) as AlertDirection | null;
-  const newValue = interaction.options.getNumber('value');
+  )) as AlertDirection | null;
+  const newValue = sanitizeNumber(interaction.options.getNumber('value'));
   const { guildId, channelId } = interaction;
+
+  if (alertId === null) {
+    await sendErrorReply(interaction, errorMessages.invalidInput());
+    return;
+  }
 
   if (!guildId || !channelId) {
     await sendErrorReply(interaction, errorMessages.commandOnlyInGuild());

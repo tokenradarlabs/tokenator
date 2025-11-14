@@ -3,6 +3,7 @@ import logger from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { createPriceAlert } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';
+import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
 
 export const createPriceAlertCommand = new SlashCommandBuilder()
   .setName('create-price-alert')
@@ -38,12 +39,17 @@ export const createPriceAlertCommand = new SlashCommandBuilder()
 export async function handleCreatePriceAlert(
   interaction: ChatInputCommandInteraction
 ) {
-  const direction = interaction.options.getString('direction', true) as
+  const direction = sanitizeString(interaction.options.getString('direction', true)) as
     | 'up'
-    | 'down';
-  const value = interaction.options.getNumber('value', true);
-  const tokenId = interaction.options.getString('token-id', true);
+    | 'down' | null;
+  const value = sanitizeNumber(interaction.options.getNumber('value', true));
+  const tokenId = sanitizeString(interaction.options.getString('token-id', true));
   const { guildId, channelId } = interaction;
+
+  if (direction === null || value === null || tokenId === null) {
+    await sendErrorReply(interaction, errorMessages.invalidInput());
+    return;
+  }
 
   const validationResult = await validatePriceAlertValue(
     tokenId,
