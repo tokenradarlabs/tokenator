@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
-import logger from '../utils/logger';
+import logger, { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { createPriceAlert } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';
@@ -45,6 +45,12 @@ export async function handleCreatePriceAlert(
   const value = sanitizeNumber(interaction.options.getNumber('value', true));
   const tokenId = sanitizeString(interaction.options.getString('token-id', true));
   const { guildId, channelId } = interaction;
+  const contextualLogger = createContextualLogger({
+    userId: interaction.user.id,
+    guildId: guildId || undefined,
+    channelId: channelId || undefined,
+    commandName: 'create-price-alert',
+  });
 
   if (direction === null || value === null || tokenId === null) {
     await sendErrorReply(interaction, errorMessages.invalidInput());
@@ -101,7 +107,7 @@ export async function handleCreatePriceAlert(
       });
     }
   } catch (error) {
-    logger.error(error, 'Error in handleCreatePriceAlert');
+    contextualLogger.error(error, 'Error in handleCreatePriceAlert');
     await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }

@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction,
   EmbedBuilder,
 } from "discord.js";
-import logger from "../utils/logger";
+import logger, { createContextualLogger } from "../utils/logger";
 import { AlertDirection } from "../generated/prisma/client";
 import { listAlerts, formatAlertsForDisplay } from "../lib/alertcommands";
 
@@ -69,6 +69,12 @@ export async function handleListAlerts(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const { guildId, channelId } = interaction;
+  const contextualLogger = createContextualLogger({
+    userId: interaction.user.id,
+    guildId: guildId || undefined,
+    channelId: channelId || undefined,
+    commandName: 'list-alerts',
+  });
   const direction = interaction.options.getString(
     "direction",
   ) as AlertDirection | null;
@@ -128,7 +134,7 @@ export async function handleListAlerts(
 
     await interaction.reply({ embeds: [embed] });
   } catch (error) {
-    logger.error({ err: error }, 'Error in handleListPriceAlerts:');
+    contextualLogger.error({ err: error }, 'Error in handleListPriceAlerts:');
     await interaction.reply({
       content: "Sorry, there was an unexpected error. Please try again later.",
       flags: 64,

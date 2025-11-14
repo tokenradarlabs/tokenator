@@ -4,7 +4,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { AlertDirection } from '../generated/prisma/client';
-import logger from '../utils/logger';
+import logger, { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { editPriceAlert, findPriceAlertById } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';
@@ -46,6 +46,12 @@ export async function handleEditPriceAlert(
   )) as AlertDirection | null;
   const newValue = sanitizeNumber(interaction.options.getNumber('value'));
   const { guildId, channelId } = interaction;
+  const contextualLogger = createContextualLogger({
+    userId: interaction.user.id,
+    guildId: guildId || undefined,
+    channelId: channelId || undefined,
+    commandName: 'edit-price-alert',
+  });
 
   if (alertId === null) {
     await sendErrorReply(interaction, errorMessages.invalidInput());
@@ -86,7 +92,7 @@ export async function handleEditPriceAlert(
       flags: 64,
     });
   } catch (error) {
-    logger.error({ err: error }, 'Error in handleEditPriceAlert:');
+    contextualLogger.error({ err: error }, 'Error in handleEditPriceAlert:');
     await sendErrorReply(interaction, errorMessages.unexpectedError());
   }
 }

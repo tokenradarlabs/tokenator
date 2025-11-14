@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, ChannelType } from 'discord.js';
 import { createVolumeAlert } from '../lib/alertcommands';
 import { getStandardizedTokenId } from '../utils/constants';
-import logger from '../utils/logger';
+import logger, { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
 
@@ -60,6 +60,12 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     const timeframe = sanitizeString(interaction.options.getString('timeframe', true)) as '24h' | '7d' | '30d' | null;
     const guildId = interaction.guildId;
     const channelId = interaction.channelId;
+    const contextualLogger = createContextualLogger({
+      userId: interaction.user.id,
+      guildId: guildId || undefined,
+      channelId: channelId || undefined,
+      commandName: 'create-volume-alert',
+    });
 
     if (token === null || direction === null || volume === null || timeframe === null) {
       await sendErrorReply(interaction, errorMessages.invalidInput());
@@ -101,7 +107,7 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     });
 
     if (result.success) {
-      logger.info({        guildId,
+      contextualLogger.info({        guildId,
         channelId,
         userId: interaction.user.id,
         token,
@@ -109,7 +115,7 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
         volume,
       }, `[VolumeAlertCommand] Volume alert created successfully`);
     } else {
-      logger.warn({        guildId,
+      contextualLogger.warn({        guildId,
         channelId,
         userId: interaction.user.id,
         token,
@@ -120,7 +126,7 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
     }
 
   } catch (error) {
-    logger.error({ err: error,        guildId: interaction.guildId,
+    contextualLogger.error({ err: error,        guildId: interaction.guildId,
       channelId: interaction.channelId,
       userId: interaction.user.id,
     }, '[VolumeAlertCommand] Error executing volume alert command');
