@@ -89,6 +89,14 @@ import {
   alertStatsCommand,
   handleAlertStats,
 } from './alertCommands/alertStats';
+import {
+  exportAlertsCommand,
+  handleExportAlerts,
+} from './alertCommands/exportAlerts';
+import {
+  importAlertsCommand,
+  handleImportAlerts,
+} from './alertCommands/importAlerts';
 import { getStandardizedTokenId } from './utils/constants';
 
 
@@ -174,6 +182,8 @@ const commandsData: ApplicationCommandDataResolvable[] = [
   disablePriceAlertCommand,
   enablePriceAlertCommand,
   alertStatsCommand,
+  exportAlertsCommand,
+  importAlertsCommand,
 ];
 
 async function createDiscordServer(): Promise<Client> {
@@ -323,6 +333,10 @@ async function handleInteractionCommands(
     await handleEnablePriceAlert(interaction);
   } else if (commandName === 'alert-stats') {
     await handleAlertStats(interaction);
+  } else if (commandName === 'export-alerts') {
+    await handleExportAlerts(interaction, prisma);
+  } else if (commandName === 'import-alerts') {
+    await handleImportAlerts(interaction, prisma);
   }
 }
 
