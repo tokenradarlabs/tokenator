@@ -79,14 +79,14 @@ The `Alert` model is heavily queried.
 
 -   **`tokenId`, `timestamp`**: For fetching the latest price of a specific token.
     ```prisma
-    @@index([tokenId, timestamp(sort: 'desc')])
+    @@index([tokenId, timestamp(sort: Desc)])
     ```
 
 ### `TokenVolume` Model
 
 -   **`tokenId`, `timestamp`**: For fetching the latest volume of a specific token.
     ```prisma
-    @@index([tokenId, timestamp(sort: 'desc')])
+    @@index([tokenId, timestamp(sort: Desc)])
     ```
 
 ### `PriceAlert` and `VolumeAlert` Models
