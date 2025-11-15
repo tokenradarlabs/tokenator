@@ -47,6 +47,7 @@ model Alert {
   tokenId         String
   token           Token         @relation(fields: [tokenId], references: [id])
   customMessage   String?
+  currency        String? @default("usd")
 
   @@unique([discordServerId, channelId, tokenId])
 }
