@@ -75,7 +75,7 @@ export async function handleAlertStats(
     const formattedMessage = formatAlertStatsMessage(result.stats, tokenId);
 
     // Get cooldown statistics
-    const cooldownStats = await getAlertCooldownStats(tokenId);
+    const cooldownStats = await getAlertCooldownStats(tokenId, guildId, channelId);
 
     // Construct and send the embed message with alert statistics.
     const embed = new EmbedBuilder()

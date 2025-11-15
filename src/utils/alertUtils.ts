@@ -91,14 +91,27 @@ export async function resetAlertCooldown(alertId: string): Promise<boolean> {
  * @param tokenId Optional filter by token ID
  * @returns Statistics object
  */
-export async function getAlertCooldownStats(tokenId?: string) {
+export async function getAlertCooldownStats(
+  tokenId?: string,
+  guildId?: string,
+  channelId?: string
+) {
   try {
     const now = new Date();
     const cooldownThreshold = new Date(
       now.getTime() - ALERT_COOLDOWN_PERIOD_MS
     );
 
-    const whereClause = tokenId ? { token: { address: tokenId } } : {};
+    const whereClause: any = {};
+    if (tokenId) {
+      whereClause.token = { address: tokenId };
+    }
+    if (guildId) {
+      whereClause.guildId = guildId;
+    }
+    if (channelId) {
+      whereClause.channelId = channelId;
+    }
 
     const [totalAlerts, enabledAlerts, alertsInCooldown] = await Promise.all([
       prisma.alert.count({ where: whereClause }),
