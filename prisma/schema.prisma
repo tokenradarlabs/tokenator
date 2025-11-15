@@ -46,6 +46,7 @@ model Alert {
   discordServer   DiscordServer @relation(fields: [discordServerId], references: [id])
   tokenId         String
   token           Token         @relation(fields: [tokenId], references: [id])
+  customMessage   String?
 
   @@unique([discordServerId, channelId, tokenId])
 }
