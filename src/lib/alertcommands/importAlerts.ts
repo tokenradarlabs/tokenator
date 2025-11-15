@@ -1,32 +1,27 @@
-import { PrismaClient, AlertType, PriceAlertDirection, VolumeAlertDirection } from '@prisma/client';
-import { validate as uuidValidate } from 'uuid';
+import { PrismaClient, AlertDirection, VolumeAlertTimeframe } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
-interface ExportedPriceAlert {
-  type: AlertType.Price;
-  id: string;
+interface ImportedAlertBase {
+  id: string; // Original ID from export, used for conflict resolution
   coinId: string;
   currency: string;
-  targetPrice: string;
-  direction: PriceAlertDirection;
-  triggerPrice?: string;
   lastTriggered?: string;
   isEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-interface ExportedVolumeAlert {
-  type: AlertType.Volume;
-  id: string;
-  coinId: string;
-  currency: string;
+interface ExportedPriceAlert extends ImportedAlertBase {
+  type: 'Price';
+  targetPrice: string;
+  direction: AlertDirection;
+}
+
+interface ExportedVolumeAlert extends ImportedAlertBase {
+  type: 'Volume';
   targetVolume: string;
-  direction: VolumeAlertDirection;
-  triggerVolume?: string;
-  lastTriggered?: string;
-  isEnabled: boolean;
-  createdAt: string;
-  updatedAt: string;
+  direction: AlertDirection;
+  timeframe: VolumeAlertTimeframe;
 }
 
 interface ImportedAlerts {
@@ -47,54 +42,62 @@ export async function importAlerts(
     volumeAlerts: { created: 0, updated: 0, skipped: 0, errors: 0 },
   };
 
-  for (const alert of importedData.priceAlerts) {
+  for (const importedPriceAlert of importedData.priceAlerts) {
     try {
       // Basic validation
-      if (!alert.coinId || !alert.currency || !alert.targetPrice || !alert.direction) {
-        console.warn(`Skipping invalid price alert: Missing required fields. ID: ${alert.id}`);
+      if (!importedPriceAlert.coinId || !importedPriceAlert.currency || !importedPriceAlert.targetPrice || !importedPriceAlert.direction) {
+        console.warn(`Skipping invalid price alert: Missing required fields. ID: ${importedPriceAlert.id}`);
         results.priceAlerts.errors++;
         continue;
       }
 
-      const existingAlert = await prisma.priceAlert.findFirst({
+      let existingAlert = await prisma.alert.findFirst({
         where: {
           userId,
           channelId,
-          coinId: alert.coinId,
-          currency: alert.currency,
-          targetPrice: parseFloat(alert.targetPrice),
-          direction: alert.direction,
+          tokenId: importedPriceAlert.coinId,
+          priceAlert: {
+            direction: importedPriceAlert.direction,
+            value: parseFloat(importedPriceAlert.targetPrice),
+          },
         },
+        include: { priceAlert: true },
       });
 
       if (existingAlert) {
         if (resolveConflicts === 'overwrite') {
-          await prisma.priceAlert.update({
+          await prisma.alert.update({
             where: { id: existingAlert.id },
             data: {
-              targetPrice: parseFloat(alert.targetPrice),
-              direction: alert.direction,
-              triggerPrice: alert.triggerPrice ? parseFloat(alert.triggerPrice) : null,
-              lastTriggered: alert.lastTriggered ? new Date(alert.lastTriggered) : null,
-              isEnabled: alert.isEnabled,
+              enabled: importedPriceAlert.isEnabled,
+              lastTriggered: importedPriceAlert.lastTriggered ? new Date(importedPriceAlert.lastTriggered) : null,
               updatedAt: new Date(),
+              priceAlert: {
+                update: {
+                  value: parseFloat(importedPriceAlert.targetPrice),
+                  direction: importedPriceAlert.direction,
+                },
+              },
             },
           });
           results.priceAlerts.updated++;
         } else if (resolveConflicts === 'rename') {
-          // For simplicity, 'rename' will create a new alert with a new ID
-          // In a real scenario, you might append a suffix to the coinId or add a note.
-          await prisma.priceAlert.create({
+          // Create a new alert with a new ID
+          const newAlert = await prisma.alert.create({
             data: {
               userId,
               channelId,
-              coinId: alert.coinId, // Consider renaming or adding a suffix
-              currency: alert.currency,
-              targetPrice: parseFloat(alert.targetPrice),
-              direction: alert.direction,
-              triggerPrice: alert.triggerPrice ? parseFloat(alert.triggerPrice) : null,
-              lastTriggered: alert.lastTriggered ? new Date(alert.lastTriggered) : null,
-              isEnabled: alert.isEnabled,
+              tokenId: importedPriceAlert.coinId,
+              enabled: importedPriceAlert.isEnabled,
+              lastTriggered: importedPriceAlert.lastTriggered ? new Date(importedPriceAlert.lastTriggered) : null,
+              createdAt: new Date(importedPriceAlert.createdAt),
+              updatedAt: new Date(),
+              priceAlert: {
+                create: {
+                  value: parseFloat(importedPriceAlert.targetPrice),
+                  direction: importedPriceAlert.direction,
+                },
+              },
             },
           });
           results.priceAlerts.created++;
@@ -102,73 +105,91 @@ export async function importAlerts(
           results.priceAlerts.skipped++;
         }
       } else {
-        await prisma.priceAlert.create({
+        // Create new alert and price alert
+        await prisma.alert.create({
           data: {
             userId,
             channelId,
-            coinId: alert.coinId,
-            currency: alert.currency,
-            targetPrice: parseFloat(alert.targetPrice),
-            direction: alert.direction,
-            triggerPrice: alert.triggerPrice ? parseFloat(alert.triggerPrice) : null,
-            lastTriggered: alert.lastTriggered ? new Date(alert.lastTriggered) : null,
-            isEnabled: alert.isEnabled,
+            tokenId: importedPriceAlert.coinId,
+            enabled: importedPriceAlert.isEnabled,
+            lastTriggered: importedPriceAlert.lastTriggered ? new Date(importedPriceAlert.lastTriggered) : null,
+            createdAt: new Date(importedPriceAlert.createdAt),
+            updatedAt: new Date(),
+            priceAlert: {
+              create: {
+                value: parseFloat(importedPriceAlert.targetPrice),
+                direction: importedPriceAlert.direction,
+              },
+            },
           },
         });
         results.priceAlerts.created++;
       }
     } catch (error) {
-      console.error(`Error importing price alert ${alert.id}: ${error.message}`);
+      console.error(`Error importing price alert ${importedPriceAlert.id}: ${error.message}`);
       results.priceAlerts.errors++;
     }
   }
 
-  for (const alert of importedData.volumeAlerts) {
+  for (const importedVolumeAlert of importedData.volumeAlerts) {
     try {
       // Basic validation
-      if (!alert.coinId || !alert.currency || !alert.targetVolume || !alert.direction) {
-        console.warn(`Skipping invalid volume alert: Missing required fields. ID: ${alert.id}`);
+      if (!importedVolumeAlert.coinId || !importedVolumeAlert.currency || !importedVolumeAlert.targetVolume || !importedVolumeAlert.direction || !importedVolumeAlert.timeframe) {
+        console.warn(`Skipping invalid volume alert: Missing required fields. ID: ${importedVolumeAlert.id}`);
         results.volumeAlerts.errors++;
         continue;
       }
 
-      const existingAlert = await prisma.volumeAlert.findFirst({
+      let existingAlert = await prisma.alert.findFirst({
         where: {
           userId,
           channelId,
-          coinId: alert.coinId,
-          currency: alert.currency,
-          targetVolume: parseFloat(alert.targetVolume),
-          direction: alert.direction,
+          tokenId: importedVolumeAlert.coinId,
+          volumeAlert: {
+            direction: importedVolumeAlert.direction,
+            value: parseFloat(importedVolumeAlert.targetVolume),
+            timeframe: importedVolumeAlert.timeframe,
+          },
         },
+        include: { volumeAlert: true },
       });
 
       if (existingAlert) {
         if (resolveConflicts === 'overwrite') {
-          await prisma.volumeAlert.update({
+          await prisma.alert.update({
             where: { id: existingAlert.id },
             data: {
-              targetVolume: parseFloat(alert.targetVolume),
-              direction: alert.direction,
-              triggerVolume: alert.triggerVolume ? parseFloat(alert.triggerVolume) : null,
-              lastTriggered: alert.lastTriggered ? new Date(alert.lastTriggered) : null,
-              isEnabled: alert.isEnabled,
+              enabled: importedVolumeAlert.isEnabled,
+              lastTriggered: importedVolumeAlert.lastTriggered ? new Date(importedVolumeAlert.lastTriggered) : null,
               updatedAt: new Date(),
+              volumeAlert: {
+                update: {
+                  value: parseFloat(importedVolumeAlert.targetVolume),
+                  direction: importedVolumeAlert.direction,
+                  timeframe: importedVolumeAlert.timeframe,
+                },
+              },
             },
           });
           results.volumeAlerts.updated++;
         } else if (resolveConflicts === 'rename') {
-          await prisma.volumeAlert.create({
+          // Create a new alert with a new ID
+          const newAlert = await prisma.alert.create({
             data: {
               userId,
               channelId,
-              coinId: alert.coinId, // Consider renaming or adding a suffix
-              currency: alert.currency,
-              targetVolume: parseFloat(alert.targetVolume),
-              direction: alert.direction,
-              triggerVolume: alert.triggerVolume ? parseFloat(alert.triggerVolume) : null,
-              lastTriggered: alert.lastTriggered ? new Date(alert.lastTriggered) : null,
-              isEnabled: alert.isEnabled,
+              tokenId: importedVolumeAlert.coinId,
+              enabled: importedVolumeAlert.isEnabled,
+              lastTriggered: importedVolumeAlert.lastTriggered ? new Date(importedVolumeAlert.lastTriggered) : null,
+              createdAt: new Date(importedVolumeAlert.createdAt),
+              updatedAt: new Date(),
+              volumeAlert: {
+                create: {
+                  value: parseFloat(importedVolumeAlert.targetVolume),
+                  direction: importedVolumeAlert.direction,
+                  timeframe: importedVolumeAlert.timeframe,
+                },
+              },
             },
           });
           results.volumeAlerts.created++;
@@ -176,23 +197,29 @@ export async function importAlerts(
           results.volumeAlerts.skipped++;
         }
       } else {
-        await prisma.volumeAlert.create({
+        // Create new alert and volume alert
+        await prisma.alert.create({
           data: {
             userId,
             channelId,
-            coinId: alert.coinId,
-            currency: alert.currency,
-            targetVolume: parseFloat(alert.targetVolume),
-            direction: alert.direction,
-            triggerVolume: alert.triggerVolume ? parseFloat(alert.triggerVolume) : null,
-            lastTriggered: alert.lastTriggered ? new Date(alert.lastTriggered) : null,
-            isEnabled: alert.isEnabled,
+            tokenId: importedVolumeAlert.coinId,
+            enabled: importedVolumeAlert.isEnabled,
+            lastTriggered: importedVolumeAlert.lastTriggered ? new Date(importedVolumeAlert.lastTriggered) : null,
+            createdAt: new Date(importedVolumeAlert.createdAt),
+            updatedAt: new Date(),
+            volumeAlert: {
+              create: {
+                value: parseFloat(importedVolumeAlert.targetVolume),
+                direction: importedVolumeAlert.direction,
+                timeframe: importedVolumeAlert.timeframe,
+              },
+            },
           },
         });
         results.volumeAlerts.created++;
       }
     } catch (error) {
-      console.error(`Error importing volume alert ${alert.id}: ${error.message}`);
+      console.error(`Error importing volume alert ${importedVolumeAlert.id}: ${error.message}`);
       results.volumeAlerts.errors++;
     }
   }
