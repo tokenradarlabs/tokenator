@@ -63,20 +63,33 @@ export async function deleteAlert(
         };
       }
       let deletedCount = 0;
+      const alertIdsToDelete: string[] = [];
+      const priceAlertIdsToDelete: string[] = [];
+      const volumeAlertIdsToDelete: string[] = [];
+
       for (const alert of disabledAlerts) {
-        try {
-          if (alert.priceAlert) {
-            await prisma.priceAlert.delete({ where: { id: alert.priceAlert.id } });
-          }
-          if (alert.volumeAlert) {
-            await prisma.volumeAlert.delete({ where: { id: alert.volumeAlert.id } });
-          }
-          await prisma.alert.delete({ where: { id: alert.id } });
-          deletedCount++;
-        } catch (err) {
-          logger.error(err, `Error deleting alert ${alert.id}:`);
+        alertIdsToDelete.push(alert.id);
+        if (alert.priceAlert) {
+          priceAlertIdsToDelete.push(alert.priceAlert.id);
+        }
+        if (alert.volumeAlert) {
+          volumeAlertIdsToDelete.push(alert.volumeAlert.id);
         }
       }
+
+      // TODO: N+1 Query - Batch delete priceAlerts, volumeAlerts, and then alerts instead of individual deletes in the loop.
+      // Consider using prisma.priceAlert.deleteMany, prisma.volumeAlert.deleteMany, and prisma.alert.deleteMany
+      if (priceAlertIdsToDelete.length > 0) {
+        await prisma.priceAlert.deleteMany({ where: { id: { in: priceAlertIdsToDelete } } });
+      }
+      if (volumeAlertIdsToDelete.length > 0) {
+        await prisma.volumeAlert.deleteMany({ where: { id: { in: volumeAlertIdsToDelete } } });
+      }
+      if (alertIdsToDelete.length > 0) {
+        const result = await prisma.alert.deleteMany({ where: { id: { in: alertIdsToDelete } } });
+        deletedCount = result.count;
+      }
+
       return {
         success: true,
         message: `Successfully deleted ${deletedCount} disabled ${type || ''} alerts in this channel.`,
