@@ -121,4 +121,42 @@ export async function handleAlertStats(
       flags: 64,
     });
 
-    // Log successful display of alert statistics.\n    logger.info(`Successfully displayed alert stats for guild ${guildId}`);\n  } catch (error) {\n    // Catch any unexpected errors during the process.\n    logger.error({ err: error }, \'Unexpected error in handleAlertStats:\');\n    await interaction.reply({\n      content: \'An unexpected error occurred while fetching alert statistics. Please try again later.\',\n      flags: 64,\n    });\n  }\n}\n\n/**\n * Generates a simple text-based bar chart for alert cooldown status.\n * @param inCooldown Number of alerts in cooldown\n * @param availableAlerts Number of alerts available\n * @returns A string representing the bar chart\n */\nfunction generateCooldownChart(inCooldown: number, availableAlerts: number): string {\n  const total = inCooldown + availableAlerts;\n  if (total === 0) {\n    return \'No alerts to display cooldown status.\';\n  }\n\n  const inCooldownRatio = inCooldown / total;\n  const availableRatio = availableAlerts / total;\n\n  const barLength = 20; // Length of the bar chart\n  const inCooldownBars = Math.round(inCooldownRatio * barLength);\n  const availableBars = barLength - inCooldownBars;\n\n  const inCooldownChart = \'🟥\'.repeat(inCooldownBars);\n  const availableChart = \'🟩\'.repeat(availableBars);\n\n  return `\`\`\`\nIn Cooldown: ${inCooldownChart} ${inCooldown} (${(inCooldownRatio * 100).toFixed(1)}%)\nAvailable:   ${availableChart} ${availableAlerts} (${(availableRatio * 100).toFixed(1)}%)\n\`\`\``;\n}
+    // Log successful display of alert statistics.
+    logger.info(`Successfully displayed alert stats for guild ${guildId}`);
+  } catch (error) {
+    // Catch any unexpected errors during the process.
+    logger.error({ err: error }, 'Unexpected error in handleAlertStats:');
+    await interaction.reply({
+      content: 'An unexpected error occurred while fetching alert statistics. Please try again later.',
+      flags: 64,
+    });
+  }
+}
+
+/**
+ * Generates a simple text-based bar chart for alert cooldown status.
+ * @param inCooldown Number of alerts in cooldown
+ * @param availableAlerts Number of alerts available
+ * @returns A string representing the bar chart
+ */
+function generateCooldownChart(inCooldown: number, availableAlerts: number): string {
+  const total = inCooldown + availableAlerts;
+  if (total === 0) {
+    return 'No alerts to display cooldown status.';
+  }
+
+  const inCooldownRatio = inCooldown / total;
+  const availableRatio = availableAlerts / total;
+
+  const barLength = 20; // Length of the bar chart
+  const inCooldownBars = Math.round(inCooldownRatio * barLength);
+  const availableBars = barLength - inCooldownBars;
+
+  const inCooldownChart = '🟥'.repeat(inCooldownBars);
+  const availableChart = '🟩'.repeat(availableBars);
+
+  return `\`\`\`
+In Cooldown: ${inCooldownChart} ${inCooldown} (${(inCooldownRatio * 100).toFixed(1)}%)
+Available:   ${availableChart} ${availableAlerts} (${(availableRatio * 100).toFixed(1)}%)
+\`\`\``;
+}
