@@ -2,16 +2,16 @@ import { PrismaClient, AlertDirection, VolumeAlertTimeframe } from '@prisma/clie
 
 export async function exportAlerts(
   prisma: PrismaClient,
-  userId: string,
+  discordServerId: string,
   channelId: string
 ) {
   const priceAlerts = await prisma.priceAlert.findMany({
-    where: { alert: { userId, channelId } },
+    where: { alert: { discordServerId, channelId } },
     include: { alert: true },
   });
 
   const volumeAlerts = await prisma.volumeAlert.findMany({
-    where: { alert: { userId, channelId } },
+    where: { alert: { discordServerId, channelId } },
     include: { alert: true },
   });
 

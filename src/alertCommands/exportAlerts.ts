@@ -12,10 +12,15 @@ export async function handleExportAlerts(
   prisma: PrismaClient
 ) {
   try {
-    const userId = interaction.user.id;
+    const discordServerId = interaction.guildId;
     const channelId = interaction.channelId;
 
-    const alertsJson = await exportAlerts(prisma, userId, channelId);
+    if (!discordServerId) {
+      await interaction.reply({ content: 'This command can only be used in a Discord server.', ephemeral: true });
+      return;
+    }
+
+    const alertsJson = await exportAlerts(prisma, discordServerId, channelId);
 
     // Discord has a message length limit, so we might need to send as a file or in chunks
     // For now, we'll send as a direct message if it's not too long, otherwise instruct the user.
