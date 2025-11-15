@@ -111,20 +111,22 @@ async function enableDisabledAlertsByType(
 
     logger.info(`Found ${disabledAlerts.length} disabled ${enableType} alerts to enable`);
 
+    // TODO: N+1 Query - Batch update alerts instead of individual updates in the loop.
+    // Consider using prisma.alert.updateMany({ where: { id: { in: disabledAlertIds } }, data: { enabled: true, lastTriggered: null } })
+    const disabledAlertIds = disabledAlerts.map(alert => alert.id);
     let enabledCount = 0;
-    for (const alert of disabledAlerts) {
-      try {
-        await prisma.alert.update({
-          where: { id: alert.id },
-          data: {
-            enabled: true,
-            lastTriggered: null,
-          },
-        });
-        enabledCount++;
-      } catch (updateError) {
-        logger.error(`Error enabling alert ${alert.id}:`, updateError);
-      }
+
+    if (disabledAlertIds.length > 0) {
+      const result = await prisma.alert.updateMany({
+        where: {
+          id: { in: disabledAlertIds },
+        },
+        data: {
+          enabled: true,
+          lastTriggered: null,
+        },
+      });
+      enabledCount = result.count;
     }
 
     logger.info(`Successfully enabled ${enabledCount} ${enableType} alerts`);

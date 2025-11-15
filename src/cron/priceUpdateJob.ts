@@ -61,6 +61,7 @@ async function cleanupOrphanedAlerts(client: Client) {
     });
 
     let cleanedCount = 0;
+    const alertsToDelete: string[] = [];
 
     for (const alert of allAlerts) {
       try {
@@ -71,9 +72,7 @@ async function cleanupOrphanedAlerts(client: Client) {
           `Discord channel fetch for ${alert.channelId}`
         );
         if (!channel) {
-          await prisma.alert.delete({
-            where: { id: alert.id },
-          });
+          alertsToDelete.push(alert.id);
           cleanedCount++;
 
           logger.info(
@@ -82,7 +81,7 @@ async function cleanupOrphanedAlerts(client: Client) {
               alertId: alert.id,
               tokenAddress: alert.token.address,
             },
-            `[CronJob-Cleanup] Deleted orphaned alert for non-existent channel`
+            `[CronJob-Cleanup] Marked orphaned alert for non-existent channel for deletion`
           );
         }
       } catch (error) {
@@ -92,9 +91,7 @@ async function cleanupOrphanedAlerts(client: Client) {
             error.message.includes('Missing Access') ||
             error.message.includes('Forbidden'))
         ) {
-          await prisma.alert.delete({
-            where: { id: alert.id },
-          });
+          alertsToDelete.push(alert.id);
           cleanedCount++;
 
           logger.info(
@@ -104,7 +101,7 @@ async function cleanupOrphanedAlerts(client: Client) {
               tokenAddress: alert.token.address,
               error: error.message,
             },
-            `[CronJob-Cleanup] Deleted orphaned alert for inaccessible channel`
+            `[CronJob-Cleanup] Marked orphaned alert for inaccessible channel for deletion`
           );
         } else {
           logger.error(
@@ -117,6 +114,19 @@ async function cleanupOrphanedAlerts(client: Client) {
           );
         }
       }
+    }
+
+    // TODO: N+1 Query - Batch delete alerts instead of individual deletes in the loop.
+    // Consider using prisma.alert.deleteMany({ where: { id: { in: alertsToDelete } } })
+    if (alertsToDelete.length > 0) {
+      await prisma.alert.deleteMany({
+        where: {
+          id: {
+            in: alertsToDelete,
+          },
+        },
+      });
+      logger.info(`[CronJob-Cleanup] Successfully deleted ${alertsToDelete.length} orphaned alerts.`);
     }
 
     logger.info(
