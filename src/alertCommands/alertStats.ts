@@ -7,6 +7,7 @@ import {
 import logger from '../utils/logger';
 import { STANDARD_TOKEN_IDS } from '../utils/constants';
 import { getAlertStats, formatAlertStatsMessage } from '../lib/alertcommands';
+import { getAlertCooldownStats } from '../utils/alertUtils';
 
 export const alertStatsCommand = new SlashCommandBuilder()
   .setName('alert-stats')
@@ -72,12 +73,47 @@ export async function handleAlertStats(
 
     // Format the retrieved statistics into a human-readable message.
     const formattedMessage = formatAlertStatsMessage(result.stats, tokenId);
-    
+
+    // Get cooldown statistics
+    const cooldownStats = await getAlertCooldownStats(tokenId, guildId, channelId);
+
     // Construct and send the embed message with alert statistics.
     const embed = new EmbedBuilder()
       .setTitle(`🔔 Price Alert Statistics ${tokenId ? `(${tokenId})` : ''}`)
       .setColor(0x00ae86)
       .setDescription(formattedMessage)
+      .addFields(
+        {
+          name: 'Total Alerts',
+          value: `${cooldownStats.totalAlerts}`,
+          inline: true,
+        },
+        {
+          name: 'Enabled Alerts',
+          value: `${cooldownStats.enabledAlerts}`,
+          inline: true,
+        },
+        {
+          name: 'Alerts in Cooldown',
+          value: `${cooldownStats.alertsInCooldown}`,
+          inline: true,
+        },
+        {
+          name: 'Alerts Available',
+          value: `${cooldownStats.alertsAvailable}`,
+          inline: true,
+        },
+        {
+          name: 'Cooldown Period',
+          value: `${cooldownStats.cooldownPeriodMs / 1000} seconds`,
+          inline: true,
+        },
+        {
+          name: 'Cooldown Status',
+          value: generateCooldownChart(cooldownStats.alertsInCooldown, cooldownStats.alertsAvailable),
+          inline: false,
+        }
+      )
       .setTimestamp();
 
     await interaction.reply({
@@ -95,4 +131,32 @@ export async function handleAlertStats(
       flags: 64,
     });
   }
+}
+
+/**
+ * Generates a simple text-based bar chart for alert cooldown status.
+ * @param inCooldown Number of alerts in cooldown
+ * @param availableAlerts Number of alerts available
+ * @returns A string representing the bar chart
+ */
+function generateCooldownChart(inCooldown: number, availableAlerts: number): string {
+  const total = inCooldown + availableAlerts;
+  if (total === 0) {
+    return 'No alerts to display cooldown status.';
+  }
+
+  const inCooldownRatio = inCooldown / total;
+  const availableRatio = availableAlerts / total;
+
+  const barLength = 20; // Length of the bar chart
+  const inCooldownBars = Math.round(inCooldownRatio * barLength);
+  const availableBars = barLength - inCooldownBars;
+
+  const inCooldownChart = '🟥'.repeat(inCooldownBars);
+  const availableChart = '🟩'.repeat(availableBars);
+
+  return `\`\`\`
+In Cooldown: ${inCooldownChart} ${inCooldown} (${(inCooldownRatio * 100).toFixed(1)}%)
+Available:   ${availableChart} ${availableAlerts} (${(availableRatio * 100).toFixed(1)}%)
+\`\`\``;
 }
