@@ -31,7 +31,7 @@ interface ImportedAlerts {
 
 export async function importAlerts(
   prisma: PrismaClient,
-  userId: string,
+  discordServerId: string,
   channelId: string,
   alertsJson: string,
   resolveConflicts: 'skip' | 'overwrite' | 'rename' = 'skip'
@@ -53,10 +53,8 @@ export async function importAlerts(
 
       let existingAlert = await prisma.alert.findFirst({
         where: {
-          userId,
+          discordServerId,
           channelId,
-          tokenId: importedPriceAlert.coinId,
-          priceAlert: {
             direction: importedPriceAlert.direction,
             value: parseFloat(importedPriceAlert.targetPrice),
           },
@@ -72,6 +70,7 @@ export async function importAlerts(
               enabled: importedPriceAlert.isEnabled,
               lastTriggered: importedPriceAlert.lastTriggered ? new Date(importedPriceAlert.lastTriggered) : null,
               updatedAt: new Date(),
+              currency: importedPriceAlert.currency ?? "usd",
               priceAlert: {
                 update: {
                   value: parseFloat(importedPriceAlert.targetPrice),
@@ -85,13 +84,14 @@ export async function importAlerts(
           // Create a new alert with a new ID
           const newAlert = await prisma.alert.create({
             data: {
-              userId,
+              discordServerId,
               channelId,
               tokenId: importedPriceAlert.coinId,
               enabled: importedPriceAlert.isEnabled,
               lastTriggered: importedPriceAlert.lastTriggered ? new Date(importedPriceAlert.lastTriggered) : null,
               createdAt: new Date(importedPriceAlert.createdAt),
               updatedAt: new Date(),
+              currency: importedPriceAlert.currency ?? "usd",
               priceAlert: {
                 create: {
                   value: parseFloat(importedPriceAlert.targetPrice),
@@ -105,16 +105,16 @@ export async function importAlerts(
           results.priceAlerts.skipped++;
         }
       } else {
-        // Create new alert and price alert
         await prisma.alert.create({
           data: {
-            userId,
+            discordServerId,
             channelId,
             tokenId: importedPriceAlert.coinId,
             enabled: importedPriceAlert.isEnabled,
             lastTriggered: importedPriceAlert.lastTriggered ? new Date(importedPriceAlert.lastTriggered) : null,
             createdAt: new Date(importedPriceAlert.createdAt),
             updatedAt: new Date(),
+            currency: importedPriceAlert.currency ?? "usd",
             priceAlert: {
               create: {
                 value: parseFloat(importedPriceAlert.targetPrice),
@@ -142,7 +142,7 @@ export async function importAlerts(
 
       let existingAlert = await prisma.alert.findFirst({
         where: {
-          userId,
+          discordServerId,
           channelId,
           tokenId: importedVolumeAlert.coinId,
           volumeAlert: {
@@ -162,6 +162,7 @@ export async function importAlerts(
               enabled: importedVolumeAlert.isEnabled,
               lastTriggered: importedVolumeAlert.lastTriggered ? new Date(importedVolumeAlert.lastTriggered) : null,
               updatedAt: new Date(),
+              currency: importedVolumeAlert.currency ?? "usd",
               volumeAlert: {
                 update: {
                   value: parseFloat(importedVolumeAlert.targetVolume),
@@ -176,13 +177,14 @@ export async function importAlerts(
           // Create a new alert with a new ID
           const newAlert = await prisma.alert.create({
             data: {
-              userId,
+              discordServerId,
               channelId,
               tokenId: importedVolumeAlert.coinId,
               enabled: importedVolumeAlert.isEnabled,
               lastTriggered: importedVolumeAlert.lastTriggered ? new Date(importedVolumeAlert.lastTriggered) : null,
               createdAt: new Date(importedVolumeAlert.createdAt),
               updatedAt: new Date(),
+              currency: importedVolumeAlert.currency ?? "usd",
               volumeAlert: {
                 create: {
                   value: parseFloat(importedVolumeAlert.targetVolume),
@@ -200,13 +202,14 @@ export async function importAlerts(
         // Create new alert and volume alert
         await prisma.alert.create({
           data: {
-            userId,
+            discordServerId,
             channelId,
             tokenId: importedVolumeAlert.coinId,
             enabled: importedVolumeAlert.isEnabled,
             lastTriggered: importedVolumeAlert.lastTriggered ? new Date(importedVolumeAlert.lastTriggered) : null,
             createdAt: new Date(importedVolumeAlert.createdAt),
             updatedAt: new Date(),
+            currency: importedVolumeAlert.currency ?? "usd",
             volumeAlert: {
               create: {
                 value: parseFloat(importedVolumeAlert.targetVolume),

@@ -16,10 +16,8 @@ export async function exportAlerts(
   });
 
   const exportedPriceAlerts = priceAlerts.map(alert => ({
-    type: 'Price' as const,
-    id: alert.alert.id,
     coinId: alert.alert.tokenId,
-    currency: 'usd', // Assuming USD as default currency for now
+    currency: alert.alert.currency,
     targetPrice: alert.value.toString(),
     direction: alert.direction,
     triggerPrice: alert.alert.lastTriggered ? alert.value.toString() : undefined, // Simplified triggerPrice
@@ -33,7 +31,7 @@ export async function exportAlerts(
     type: 'Volume' as const,
     id: alert.alert.id,
     coinId: alert.alert.tokenId,
-    currency: 'usd', // Assuming USD as default currency for now
+    currency: alert.alert.currency,
     targetVolume: alert.value.toString(),
     direction: alert.direction,
     timeframe: alert.timeframe,
