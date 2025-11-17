@@ -18,6 +18,7 @@ export class NotificationQueue {
   private static instance: NotificationQueue;
   private retryIntervalsMs = [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000, 30 * 60 * 1000, 60 * 60 * 1000]; // 1m, 5m, 15m, 30m, 1h
   private processingInterval: NodeJS.Timeout | null = null;
+  private isProcessing: boolean = false;
 
   private constructor() {}
 
@@ -50,7 +51,17 @@ export class NotificationQueue {
       return;
     }
 
-    this.processingInterval = setInterval(() => this.processQueue(), 30 * 1000); // Check every 30 seconds
+    this.processingInterval = setInterval(async () => {
+      if (this.isProcessing) {
+        logger.debug('Notification queue already processing, skipping this interval.');
+        return;
+      }
+      try {
+        await this.processQueue();
+      } catch (error) {
+        logger.error(`Error during notification queue processing: ${error}`);
+      }
+    }, 30 * 1000); // Check every 30 seconds
     logger.info('Notification queue processing started.');
   }
 
@@ -63,19 +74,28 @@ export class NotificationQueue {
   }
 
   private async processQueue(): Promise<void> {
-    const now = new Date();
-    const notificationsToRetry = await prisma.failedNotification.findMany({
-      where: {
-        nextAttemptAt: { lte: now },
-        retryCount: { lt: this.retryIntervalsMs.length },
-      },
-      orderBy: {
-        nextAttemptAt: 'asc',
-      },
-    });
+    this.isProcessing = true;
+    try {
+      const now = new Date();
+      const notificationsToRetry = await prisma.failedNotification.findMany({
+        where: {
+          nextAttemptAt: { lte: now },
+          retryCount: { lt: this.retryIntervalsMs.length },
+        },
+        orderBy: {
+          nextAttemptAt: 'asc',
+        },
+      });
 
-    for (const notification of notificationsToRetry) {
-      await this.retryNotification(notification);
+      for (const notification of notificationsToRetry) {
+        try {
+          await this.retryNotification(notification);
+        } catch (error) {
+          logger.error(`Error retrying notification ${notification.id}: ${error}`);
+        }
+      }
+    } finally {
+      this.isProcessing = false;
     }
   }
 
