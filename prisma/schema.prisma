@@ -100,3 +100,13 @@ model TokenVolume {
   @@index([timestamp])
   @@index([tokenId])
 }
+
+model FailedNotification {
+  id            String    @id @default(cuid())
+  channelId     String
+  message       String
+  retryCount    Int       @default(0)
+  nextAttemptAt DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
