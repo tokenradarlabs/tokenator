@@ -1,7 +1,7 @@
 import supertest from 'supertest';
 import { buildApp } from './app';
 import jwt from 'jsonwebtoken';
-import config from './config';
+import { config } from './config';
 
 // Mock the logger to prevent console output during tests
 jest.mock('./utils/logger', () => ({

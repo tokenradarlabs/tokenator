@@ -12,7 +12,6 @@ export function buildApp() {
   // requestTiming should come first to log all requests
   app.register(requestTiming);
   // authenticate should come after timing, but before routes that require authentication
-  app.register(authenticate);
 
   // Example route (for testing purposes)
   app.get('/health', async (request, reply) => {
