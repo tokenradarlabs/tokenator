@@ -8,7 +8,6 @@ describe('Router', () => {
 
   beforeEach(async () => {
     app = Fastify();
-    app.register(authenticate); // Register authenticate plugin as it's used by indexController
     app.register(router);
     app.register(indexController);
     await app.ready();
