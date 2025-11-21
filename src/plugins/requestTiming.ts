@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
-import { logger } from '../utils/logger';
+import logger from '../utils/logger';
 
 declare module 'fastify' {
   interface FastifyRequest {

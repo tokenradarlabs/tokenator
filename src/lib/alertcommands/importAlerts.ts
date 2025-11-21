@@ -1,5 +1,4 @@
 import { PrismaClient, AlertDirection, VolumeAlertTimeframe } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
 
 interface ImportedAlertBase {
   id: string; // Original ID from export, used for conflict resolution
@@ -55,6 +54,8 @@ export async function importAlerts(
         where: {
           discordServerId,
           channelId,
+          tokenId: importedPriceAlert.coinId,
+          priceAlert: {
             direction: importedPriceAlert.direction,
             value: parseFloat(importedPriceAlert.targetPrice),
           },
