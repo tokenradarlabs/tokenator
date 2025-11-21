@@ -1,10 +1,11 @@
 import Fastify from 'fastify';
 import { authenticate } from './plugins/authenticate';
 import { requestTiming } from './plugins/requestTiming';
-import { logger } from './utils/logger';
+import logger from './utils/logger';
 import { router } from './router';
 import { indexController } from './controllers/indexController';
 import { priceController } from './controllers/priceController';
+import { HttpError } from './utils/httpErrors';
 
 export function buildApp() {
   const app = Fastify({
@@ -19,6 +20,15 @@ export function buildApp() {
   app.register(router);
   app.register(indexController);
   app.register(priceController);
+
+  app.setErrorHandler((error, request, reply) => {
+    if (error instanceof HttpError) {
+      reply.status(error.statusCode).send({ message: error.message });
+    } else {
+      app.log.error(error); // Log unexpected errors
+      reply.status(500).send({ message: 'Internal Server Error' });
+    }
+  });
 
   return app;
 }
