@@ -2,6 +2,9 @@ import Fastify from 'fastify';
 import { authenticate } from './plugins/authenticate';
 import { requestTiming } from './plugins/requestTiming';
 import { logger } from './utils/logger';
+import { router } from './router';
+import { indexController } from './controllers/indexController';
+import { priceController } from './controllers/priceController';
 
 export function buildApp() {
   const app = Fastify({
@@ -13,14 +16,9 @@ export function buildApp() {
   app.register(requestTiming);
   // authenticate should come after timing, but before routes that require authentication
 
-  // Example route (for testing purposes)
-  app.get('/health', async (request, reply) => {
-    return { status: 'ok' };
-  });
-
-  app.get('/protected', { preHandler: [authenticate] }, async (request, reply) => {
-    return { message: 'This is a protected route', user: request.user };
-  });
+  app.register(router);
+  app.register(indexController);
+  app.register(priceController);
 
   return app;
 }
