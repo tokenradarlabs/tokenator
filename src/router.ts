@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import { priceAlertController } from './controllers/alerts/priceAlertController';
+import { getApiKeysController } from './controllers/getApiKeysController';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -10,6 +11,7 @@ declare module 'fastify' {
 
 const routerPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   fastify.register(priceAlertController);
+  fastify.register(getApiKeysController);
 };
 
 export const router = fp(routerPlugin, {
