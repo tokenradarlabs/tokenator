@@ -3,6 +3,7 @@ import { NotFoundError, BadRequestError, InternalServerError } from '../../utils
 import { validatePriceAlertValue } from '../../utils/priceValidation';
 import { CreatePriceAlertSchema, UpdatePriceAlertSchema, AlertParamsSchema, CreatePriceAlertInput, UpdatePriceAlertInput } from '../../utils/schemas/priceAlertSchemas';
 import logger from '../../utils/logger';
+import { z } from 'zod';
 
 export async function priceAlertController(fastify: FastifyInstance) {
 
