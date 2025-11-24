@@ -1,8 +1,8 @@
-import { validatePriceAlert, validateVolumeAlert, validateTokenIdAndPrice } from './priceValidation';
+import { validatePriceAlertValue, _validateNumericInput, _checkAbsoluteBounds, getTokenPriceBounds } from './priceValidation';
 import { getStandardizedTokenId } from './constants';
 import { formatPrice } from './priceFormatter';
-import { getLatestTokenPrice, getCoinGeckoTokenPrice } from './coinGecko';
-import { CoinGeckoPriceDetail } from '../types/coinGecko';
+import { getLatestTokenPriceFromDatabase, fetchTokenPrice } from './coinGecko';
+import { CreatePriceAlertSchema, UpdatePriceAlertSchema } from './schemas/priceAlertSchemas';
 
 // Mock external dependencies
 jest.mock('./constants', () => ({
@@ -14,8 +14,8 @@ jest.mock('./priceFormatter', () => ({
 }));
 
 jest.mock('./coinGecko', () => ({
-  getLatestTokenPrice: jest.fn(),
-  getCoinGeckoTokenPrice: jest.fn(),
+  getLatestTokenPriceFromDatabase: jest.fn(),
+  fetchTokenPrice: jest.fn(),
 }));
 
 describe('priceValidation', () => {
@@ -266,6 +266,157 @@ describe('priceValidation', () => {
       getStandardizedTokenId.mockReturnValue(null);
       const bounds = getTokenPriceBounds('unknown');
       expect(bounds).toBeNull();
+    });
+  });
+
+  describe('PriceAlertSchemas', () => {
+    describe('CreatePriceAlertSchema', () => {
+      it('should validate a correct payload', () => {
+        const payload = {
+          token: 'bitcoin',
+          price: 50000,
+          direction: 'up',
+          userId: 'user123',
+          triggerOnce: false,
+        };
+        const result = CreatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual(payload);
+      });
+
+      it('should validate a correct payload with price as string', () => {
+        const payload = {
+          token: 'ethereum',
+          price: '3000',
+          direction: 'down',
+          userId: 'user456',
+        };
+        const result = CreatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual({ ...payload, triggerOnce: false }); // triggerOnce defaults to false
+      });
+
+      it('should reject payload with missing token', () => {
+        const payload = {
+          price: 50000,
+          direction: 'up',
+          userId: 'user123',
+        };
+        const result = CreatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(false);
+        expect(result.error?.errors[0].message).toContain('Token ID is required.');
+      });
+
+      it('should reject payload with missing price', () => {
+        const payload = {
+          token: 'bitcoin',
+          direction: 'up',
+          userId: 'user123',
+        };
+        const result = CreatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(false);
+        expect(result.error?.errors[0].message).toContain('Price is required and must be a positive number.');
+      });
+
+      it('should reject payload with non-positive price', () => {
+        const payload = {
+          token: 'bitcoin',
+          price: 0,
+          direction: 'up',
+          userId: 'user123',
+        };
+        const result = CreatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(false);
+        expect(result.error?.errors[0].message).toContain('Price must be a positive number.');
+      });
+
+      it('should reject payload with invalid direction', () => {
+        const payload = {
+          token: 'bitcoin',
+          price: 50000,
+          direction: 'sideways',
+          userId: 'user123',
+        };
+        const result = CreatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(false);
+        expect(result.error?.errors[0].message).toContain('Direction must be either "up" or "down".');
+      });
+
+      it('should reject payload with missing userId', () => {
+        const payload = {
+          token: 'bitcoin',
+          price: 50000,
+          direction: 'up',
+        };
+        const result = CreatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(false);
+        expect(result.error?.errors[0].message).toContain('User ID is required.');
+      });
+    });
+
+    describe('UpdatePriceAlertSchema', () => {
+      it('should validate a correct partial payload (price only)', () => {
+        const payload = {
+          alertId: 'alert123',
+          price: 55000,
+        };
+        const result = UpdatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual(payload);
+      });
+
+      it('should validate a correct partial payload (direction only)', () => {
+        const payload = {
+          alertId: 'alert123',
+          direction: 'down',
+        };
+        const result = UpdatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual(payload);
+      });
+
+      it('should validate a correct full payload', () => {
+        const payload = {
+          alertId: 'alert123',
+          token: 'ethereum',
+          price: '3500',
+          direction: 'up',
+          triggerOnce: true,
+        };
+        const result = UpdatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual(payload);
+      });
+
+      it('should reject payload with missing alertId', () => {
+        const payload = {
+          price: 50000,
+          direction: 'up',
+        };
+        const result = UpdatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(false);
+        expect(result.error?.errors[0].message).toContain('Alert ID is required.');
+      });
+
+      it('should reject payload with non-positive price', () => {
+        const payload = {
+          alertId: 'alert123',
+          price: 0,
+        };
+        const result = UpdatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(false);
+        expect(result.error?.errors[0].message).toContain('Price must be a positive number.');
+      });
+
+      it('should reject payload with invalid direction', () => {
+        const payload = {
+          alertId: 'alert123',
+          direction: 'invalid',
+        };
+        const result = UpdatePriceAlertSchema.safeParse(payload);
+        expect(result.success).toBe(false);
+        expect(result.error?.errors[0].message).toContain('Direction must be either "up" or "down".');
+      });
     });
   });
 });
