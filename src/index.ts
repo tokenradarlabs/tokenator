@@ -1,5 +1,16 @@
+import logger from './utils/logger';
 import { startDevPriceUpdateJob, stopAllCronJobs } from './cron/priceUpdateJob';
 import prisma from './utils/prisma';
+import {
+  ApplicationCommandDataResolvable,
+  SlashCommandBuilder,
+  Client,
+  GatewayIntentBits,
+  Partials,
+  ChatInputCommandInteraction,
+  REST,
+  Routes,
+} from 'discord.js';
 
 let isShuttingDown = false;
 
@@ -53,6 +64,7 @@ import {
 } from './utils/coinGecko';
 import { getLatestTokenPriceFromDatabase } from './utils/databasePrice';
 import { formatPriceForDisplay } from './utils/priceFormatter';
+import { config } from './config';
 import {
   createPriceAlertCommand,
   handleCreatePriceAlert,
@@ -97,8 +109,7 @@ import {
   importAlertsCommand,
   handleImportAlerts,
 } from './alertCommands/importAlerts';
-import { getStandardizedTokenId } from './utils/constants';
-
+import { resolveTokenAlias } from './utils/constants';
 
 const token: string = config.DISCORD_TOKEN;
 
@@ -214,7 +225,7 @@ async function handleInteractionCommands(
     const tokenId = interaction.options.getString('token-id', true);
     try {
       // Get standardized token ID for database lookup
-      const standardizedTokenId = getStandardizedTokenId(tokenId);
+      const standardizedTokenId = resolveTokenAlias(tokenId);
 
       if (!standardizedTokenId) {
         await interaction.reply(
@@ -227,7 +238,8 @@ async function handleInteractionCommands(
       const latestPrice = await getLatestTokenPriceFromDatabase(standardizedTokenId);
 
       if (latestPrice) {
-        const replyMessage = `**${tokenId}** Price: ${formatPriceForDisplay(latestPrice)}\n`;
+        const replyMessage = `**${tokenId}** Price: ${formatPriceForDisplay(latestPrice)}
+`;
         await interaction.reply(replyMessage);
       } else {
         await interaction.reply(
@@ -285,7 +297,7 @@ async function handleInteractionCommands(
     const tokenId = interaction.options.getString('token-id', true);
     try {
       // Get standardized token ID for database lookup
-      const standardizedTokenId = getStandardizedTokenId(tokenId);
+      const standardizedTokenId = resolveTokenAlias(tokenId);
 
       if (!standardizedTokenId) {
         await interaction.reply(
