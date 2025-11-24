@@ -8,7 +8,6 @@ import { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { editPriceAlert, findPriceAlertById } from '../lib/alertcommands';
 import { validatePriceAlertValue } from '../utils/priceValidation';
-import { getStandardizedTokenId } from '../utils/constants';
 import { formatPrice } from '../utils/priceFormatter';
 import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
 

@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, ChannelType } from 'discord.js';
 import { createVolumeAlert } from '../lib/alertcommands';
-import { getStandardizedTokenId } from '../utils/constants';
+import { resolveTokenAlias } from '../utils/constants';
 import { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
@@ -86,7 +86,7 @@ export async function handleCreateVolumeAlert(interaction: ChatInputCommandInter
       return;
     }
 
-    const standardizedTokenId = getStandardizedTokenId(token);
+    const standardizedTokenId = resolveTokenAlias(token);
     if (!standardizedTokenId) {
       await sendErrorReply(interaction, errorMessages.invalidToken());
       return;

@@ -2,7 +2,7 @@ import logger from '../../utils/logger';
 import prisma from '../../utils/prisma';
 import {
   isSupportedToken,
-  getStandardizedTokenId,
+  resolveTokenAlias,
 } from '../../utils/constants';
 import { formatNumber } from '../../utils/coinGecko';
 import { getTokenVolumeByTimeframe } from '../../utils/databaseVolume';
@@ -63,7 +63,7 @@ export async function createVolumeAlert(
   }
 
   try {
-    const standardTokenId = getStandardizedTokenId(tokenId);
+    const standardTokenId = resolveTokenAlias(tokenId);
     if (!standardTokenId) {
       throw new Error(`Unsupported token: ${tokenId}`);
     }
@@ -161,14 +161,7 @@ export async function createVolumeAlert(
     };
 
   } catch (error) {
-    logger.error('[VolumeAlert] Error creating volume alert', error as Error, {
-      tokenId,
-      direction,
-      value,
-      timeframe,
-      channelId,
-      guildId,
-    });
+    logger.error({ err: error, tokenId, direction, value, timeframe, channelId, guildId }, '[VolumeAlert] Error creating volume alert');
 
     return {
       success: false,
