@@ -238,8 +238,7 @@ async function handleInteractionCommands(
       const latestPrice = await getLatestTokenPriceFromDatabase(standardizedTokenId);
 
       if (latestPrice) {
-        const replyMessage = `**${tokenId}** Price: ${formatPriceForDisplay(latestPrice)}
-`;
+        const replyMessage = `**${tokenId}** Price: ${formatPriceForDisplay(latestPrice)}`;
         await interaction.reply(replyMessage);
       } else {
         await interaction.reply(
