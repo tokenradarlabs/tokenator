@@ -1,7 +1,7 @@
 import logger from './logger';
 import { getLatestTokenPriceFromDatabase } from './databasePrice';
 import { fetchTokenPrice } from './coinGecko';
-import { getStandardizedTokenId } from './constants';
+import { resolveTokenAlias } from './constants';
 import { formatPrice } from './priceFormatter';
 
 // Define reasonable price bounds for each token type
@@ -82,7 +82,7 @@ export function _validateNumericInput(inputPrice: number | string | null | undef
   if (parsedPrice <= 0) {
     return {
       isValid: false,
-      errorMessage: `Price value must be positive. You entered: $${formatPrice(parsedPrice)}.`,
+      errorMessage: `Price value must be positive. You entered: $${formatPrice(parsedPrice)}.`, 
     };
   }
 
@@ -106,7 +106,7 @@ export function _checkAbsoluteBounds(
       isValid: false,
       errorMessage: `Price value $${formatPrice(priceValue)} is too low for ${
         bounds.name
-      }. The minimum allowed is $${formatPrice(bounds.min)}.`,
+      }. The minimum allowed is $${formatPrice(bounds.min)}.`, 
     };
   }
 
@@ -115,7 +115,7 @@ export function _checkAbsoluteBounds(
       isValid: false,
       errorMessage: `Price value $${formatPrice(priceValue)} is too high for ${
         bounds.name
-      }. The maximum allowed is $${formatPrice(bounds.max)}.`,
+      }. The maximum allowed is $${formatPrice(bounds.max)}.`, 
     };
   }
 
@@ -135,7 +135,7 @@ export async function validatePriceAlertValue(
   direction: 'up' | 'down'
 ): Promise<PriceValidationResult> {
   // Get standardized token ID
-  const standardizedId = getStandardizedTokenId(tokenId);
+  const standardizedId = resolveTokenAlias(tokenId);
   if (!standardizedId || !(standardizedId in TOKEN_PRICE_BOUNDS)) {
     return {
       isValid: false,
@@ -177,10 +177,7 @@ export async function validatePriceAlertValue(
       }
     }
   } catch (error) {
-    logger.warn(
-      `[PriceValidation] Could not fetch current price for ${tokenId}:`,
-      error
-    );
+    logger.warn({ error }, `[PriceValidation] Could not fetch current price for ${tokenId}`);
   }
 
   // If we have current price, do additional validation
@@ -242,7 +239,7 @@ export async function validatePriceAlertValue(
  * @returns The price bounds for the token, or null if unsupported
  */
 export function getTokenPriceBounds(tokenId: string) {
-  const standardizedId = getStandardizedTokenId(tokenId);
+  const standardizedId = resolveTokenAlias(tokenId);
   if (!standardizedId || !(standardizedId in TOKEN_PRICE_BOUNDS)) {
     return null;
   }

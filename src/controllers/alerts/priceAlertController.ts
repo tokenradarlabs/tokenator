@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { NotFoundError, BadRequestError, InternalServerError } from '../../utils/httpErrors';
 import { validatePriceAlertValue } from '../../utils/priceValidation';
-import { CreatePriceAlertSchema, UpdatePriceAlertSchema, CreatePriceAlertInput, UpdatePriceAlertInput } from '../../utils/schemas/priceAlertSchemas';
+import { CreatePriceAlertSchema, UpdatePriceAlertSchema, AlertParamsSchema, CreatePriceAlertInput, UpdatePriceAlertInput } from '../../utils/schemas/priceAlertSchemas';
 import logger from '../../utils/logger';
 
 export async function priceAlertController(fastify: FastifyInstance) {
@@ -42,7 +42,7 @@ export async function priceAlertController(fastify: FastifyInstance) {
   });
 
   // Route to update an existing price alert
-  fastify.put<{ Params: { alertId: string }, Body: UpdatePriceAlertInput }>('/alerts/price/:alertId', async (request, reply) => {
+  fastify.put<{ Params: z.infer<typeof AlertParamsSchema>, Body: UpdatePriceAlertInput }>('/alerts/price/:alertId', async (request, reply) => {
     try {
       const { alertId } = request.params;
       const parsedBody = UpdatePriceAlertSchema.safeParse(request.body);
@@ -56,27 +56,18 @@ export async function priceAlertController(fastify: FastifyInstance) {
 
       // In a real application, you would fetch the existing alert first
       // For now, we'll assume the alert exists and has a token and direction for validation
-      const existingAlert = { token: token || 'bitcoin', direction: direction || 'up' }; // Placeholder existing alert
+      // and use sensible defaults if not found or incomplete.
+      const existingAlert = { token: 'bitcoin', direction: 'up' }; // Placeholder existing alert
 
-      if (token && price && direction) {
-        const validationResult = await validatePriceAlertValue(token, price, direction);
-        if (!validationResult.isValid) {
-          throw new BadRequestError(validationResult.errorMessage || 'Invalid price alert parameters.');
-        }
-      } else if (token && price && !direction) {
-        // If only token and price are updated, use existing direction for validation
-        const validationResult = await validatePriceAlertValue(token, price, existingAlert.direction as 'up' | 'down');
-        if (!validationResult.isValid) {
-          throw new BadRequestError(validationResult.errorMessage || 'Invalid price alert parameters.');
-        }
-      } else if (!token && price && direction) {
-        // If only price and direction are updated, use existing token for validation
-        const validationResult = await validatePriceAlertValue(existingAlert.token, price, direction);
+      if (price !== undefined) {
+        const effectiveToken = token || existingAlert.token;
+        const effectiveDirection = direction || existingAlert.direction;
+
+        const validationResult = await validatePriceAlertValue(effectiveToken, price, effectiveDirection as 'up' | 'down');
         if (!validationResult.isValid) {
           throw new BadRequestError(validationResult.errorMessage || 'Invalid price alert parameters.');
         }
       }
-      // If only token or direction is updated, or only triggerOnce, no price validation is needed here
 
       // Placeholder for updating the alert in the database
       logger.info(`[PriceAlertController] Updating price alert ${alertId} with token: ${token}, price: ${price}, direction: ${direction}, triggerOnce: ${triggerOnce}`);

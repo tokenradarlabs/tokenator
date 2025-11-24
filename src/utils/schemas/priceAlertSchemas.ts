@@ -12,8 +12,11 @@ export const CreatePriceAlertSchema = z.object({
   triggerOnce: z.boolean().optional().default(false),
 });
 
-export const UpdatePriceAlertSchema = z.object({
+export const AlertParamsSchema = z.object({
   alertId: z.string().min(1, 'Alert ID is required.'),
+});
+
+export const UpdatePriceAlertSchema = z.object({
   token: z.string().min(1, 'Token ID is required.').optional(),
   price: z.union([z.number().positive('Price must be a positive number.'), z.string().min(1, 'Price is required and must be a positive number.')]).optional(),
   direction: PriceAlertDirectionSchema.optional(),

@@ -4,7 +4,7 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ["**/src/**/*.test.ts"],
   transform: {
-    '^.+\.ts$': 'babel-jest',
+    '^.+\.ts$': ['ts-jest', { tsconfig: './tsconfig.json' }],
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

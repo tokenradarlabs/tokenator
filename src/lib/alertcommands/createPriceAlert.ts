@@ -3,7 +3,7 @@ import prisma from '../../utils/prisma';
 import { getLatestTokenPriceFromDatabase } from '../../utils/databasePrice';
 import {
   isSupportedToken,
-  getStandardizedTokenId,
+  resolveTokenAlias,
 } from '../../utils/constants';
 import { validatePriceAlertValue } from '../../utils/priceValidation';
 import { formatPriceForDisplay } from '../../utils/priceFormatter';
@@ -53,7 +53,7 @@ export async function createPriceAlert(
   }
 
   try {
-    const standardizedId = getStandardizedTokenId(tokenId);
+    const standardizedId = resolveTokenAlias(tokenId);
     if (!standardizedId) {
       throw new Error(`Unsupported token: ${tokenId}`);
     }
