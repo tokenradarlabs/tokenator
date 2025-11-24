@@ -1,26 +1,24 @@
 import Fastify from 'fastify';
 import { getApiKeysController } from './getApiKeysController';
-import { PrismaClient } from '@prisma/client';
 
 // Mock Prisma Client
-const prisma = new PrismaClient();
+const mockFindMany = jest.fn();
 
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => ({
     token: {
-      findMany: jest.fn(),
+      findMany: mockFindMany,
     },
   })),
 }));
 
 describe('getApiKeysController', () => {
   let fastify: any;
-  let mockFindMany: jest.Mock;
 
   beforeEach(() => {
     fastify = Fastify();
     fastify.register(getApiKeysController);
-    mockFindMany = prisma.token.findMany as jest.Mock;
+    mockFindMany.mockClear();
   });
 
   afterEach(async () => {
