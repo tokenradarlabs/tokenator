@@ -1,10 +1,10 @@
-import { fetchTokenPriceDetailed, CoinGeckoFetchResult, CoinGeckoErrorType } from './coinGecko';
+let { fetchTokenPriceDetailed, CoinGeckoFetchResult, CoinGeckoErrorType } = require('./coinGecko');
 import { fetchWithRetry } from './fetchWithRetry';
 import { config } from '../config';
 
 // Mock logger to prevent console output during tests
 jest.mock('./logger', () => ({
-  logger: {
+  default: {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
@@ -39,10 +39,9 @@ describe('fetchTokenPriceDetailed', () => {
   };
 
   beforeEach(() => {
+    jest.resetModules();
+    ({ fetchTokenPriceDetailed, CoinGeckoFetchResult, CoinGeckoErrorType } = require('./coinGecko'));
     jest.clearAllMocks();
-    // Reset cache before each test
-    (fetchTokenPriceDetailed as any).priceCache = new Map();
-    (fetchTokenPriceDetailed as any).cacheTimeouts = new Map();
   });
 
   it('should return price data on successful fetch', async () => {
@@ -60,21 +59,39 @@ describe('fetchTokenPriceDetailed', () => {
   });
 
   it('should return cached data if available and not expired', async () => {
-    // Manually prime the cache
-    const expiry = Date.now() + 100000; // 100 seconds from now
-    (fetchTokenPriceDetailed as any).priceCache.set(tokenId, { data: mockPriceData, expiry });
+    mockFetchWithRetry.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ [tokenId]: mockPriceData }),
+    } as Response);
 
+    // First call to populate the cache
+    await fetchTokenPriceDetailed(tokenId);
+    expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
+
+    // Second call should use cache
     const result = await fetchTokenPriceDetailed(tokenId);
 
     expect(result.ok).toBe(true);
     expect((result as { data: any }).data).toEqual(mockPriceData);
-    expect(mockFetchWithRetry).not.toHaveBeenCalled(); // Should not call fetchWithRetry
+    expect(mockFetchWithRetry).toHaveBeenCalledTimes(1); // Should not call fetchWithRetry again
   });
 
   it('should fetch new data if cached data is expired', async () => {
-    // Manually prime the cache with expired data
-    const expiry = Date.now() - 1000; // 1 second ago
-    (fetchTokenPriceDetailed as any).priceCache.set(tokenId, { data: mockPriceData, expiry });
+    jest.useFakeTimers();
+
+    mockFetchWithRetry.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ [tokenId]: mockPriceData }),
+    } as Response);
+
+    // First call to populate the cache
+    await fetchTokenPriceDetailed(tokenId);
+    expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
+
+    // Advance timers to expire the cache
+    jest.advanceTimersByTime(config.COINGECKO_CACHE_TTL_SECONDS * 1000 + 1);
 
     mockFetchWithRetry.mockResolvedValueOnce({
       ok: true,
@@ -86,7 +103,9 @@ describe('fetchTokenPriceDetailed', () => {
 
     expect(result.ok).toBe(true);
     expect((result as { data: any }).data).toEqual(mockPriceData);
-    expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
+    expect(mockFetchWithRetry).toHaveBeenCalledTimes(2); // Should call fetchWithRetry again
+
+    jest.useRealTimers();
   });
 
   it('should handle network errors from fetchWithRetry', async () => {
