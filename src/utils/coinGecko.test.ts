@@ -1,5 +1,5 @@
 let { fetchTokenPriceDetailed, CoinGeckoFetchResult, CoinGeckoErrorType } = require('./coinGecko');
-import { fetchWithRetry } from './fetchWithRetry';
+import { fetchWithRetry, FetchError, TimeoutError, NetworkError } from './fetchWithRetry';
 import { config } from '../config';
 
 // Mock logger to prevent console output during tests
@@ -15,6 +15,9 @@ jest.mock('./logger', () => ({
 // Mock fetchWithRetry
 jest.mock('./fetchWithRetry', () => ({
   fetchWithRetry: jest.fn(),
+  FetchError: FetchError, // Exporting for instanceof checks in tests
+  TimeoutError: TimeoutError,
+  NetworkError: NetworkError,
 }));
 
 const mockFetchWithRetry = fetchWithRetry as jest.MockedFunction<typeof fetchWithRetry>;
@@ -26,6 +29,7 @@ jest.mock('../config', () => ({
     COINGECKO_CACHE_TTL_SECONDS: 60,
     COINGECKO_API_CACHE_COOLDOWN_SECONDS_MIN: 30,
     COINGECKO_API_CACHE_COOLDOWN_SECONDS_MAX: 120,
+    COINGECKO_API_TIMEOUT_MS: 5000, // Added mock for timeout
   },
 }));
 
@@ -56,6 +60,7 @@ describe('fetchTokenPriceDetailed', () => {
     expect(result.ok).toBe(true);
     expect((result as { data: any }).data).toEqual(mockPriceData);
     expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
+    expect(mockFetchWithRetry).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ timeout: config.COINGECKO_API_TIMEOUT_MS }));
   });
 
   it('should return cached data if available and not expired', async () => {
@@ -109,7 +114,7 @@ describe('fetchTokenPriceDetailed', () => {
   });
 
   it('should handle network errors from fetchWithRetry', async () => {
-    mockFetchWithRetry.mockRejectedValueOnce(new Error('Network down'));
+    mockFetchWithRetry.mockRejectedValueOnce(new NetworkError('Network down'));
 
     const result = await fetchTokenPriceDetailed(tokenId);
 
@@ -119,54 +124,50 @@ describe('fetchTokenPriceDetailed', () => {
     expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
   });
 
+  it('should handle timeout errors from fetchWithRetry', async () => {
+    mockFetchWithRetry.mockRejectedValueOnce(new TimeoutError('Request timed out'));
+
+    const result = await fetchTokenPriceDetailed(tokenId);
+
+    expect(result.ok).toBe(false);
+    expect((result as { errorType: CoinGeckoErrorType }).errorType).toBe('timeout');
+    expect((result as { message: string }).message).toContain('Request timed out');
+    expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
+  });
+
   it('should handle 404 (invalid token) response', async () => {
-    mockFetchWithRetry.mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
-      text: async () => 'Token not found',
-    } as Response);
+    mockFetchWithRetry.mockRejectedValueOnce(new FetchError('Failed to fetch with status 404', 404, 'Not Found', 'Token not found'));
 
     const result = await fetchTokenPriceDetailed(tokenId);
 
     expect(result.ok).toBe(false);
     expect((result as { errorType: CoinGeckoErrorType }).errorType).toBe('invalid_token');
     expect((result as { status: number }).status).toBe(404);
-    expect((result as { message: string }).message).toContain('HTTP 404 Not Found');
+    expect((result as { message: string }).message).toContain('Failed to fetch with status 404');
     expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
   });
 
   it('should handle 429 (rate limit) response', async () => {
-    mockFetchWithRetry.mockResolvedValueOnce({
-      ok: false,
-      status: 429,
-      statusText: 'Too Many Requests',
-      text: async () => 'Rate limit exceeded',
-    } as Response);
+    mockFetchWithRetry.mockRejectedValueOnce(new FetchError('Failed to fetch with status 429', 429, 'Too Many Requests', 'Rate limit exceeded'));
 
     const result = await fetchTokenPriceDetailed(tokenId);
 
     expect(result.ok).toBe(false);
     expect((result as { errorType: CoinGeckoErrorType }).errorType).toBe('rate_limited');
     expect((result as { status: number }).status).toBe(429);
-    expect((result as { message: string }).message).toContain('HTTP 429 Too Many Requests');
+    expect((result as { message: string }).message).toContain('Failed to fetch with status 429');
     expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
   });
 
   it('should handle 500 (server error) response', async () => {
-    mockFetchWithRetry.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      text: async () => 'Server crashed',
-    } as Response);
+    mockFetchWithRetry.mockRejectedValueOnce(new FetchError('Failed to fetch with status 500', 500, 'Internal Server Error', 'Server crashed'));
 
     const result = await fetchTokenPriceDetailed(tokenId);
 
     expect(result.ok).toBe(false);
     expect((result as { errorType: CoinGeckoErrorType }).errorType).toBe('server_error');
     expect((result as { status: number }).status).toBe(500);
-    expect((result as { message: string }).message).toContain('HTTP 500 Internal Server Error');
+    expect((result as { message: string }).message).toContain('Failed to fetch with status 500');
     expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
   });
 

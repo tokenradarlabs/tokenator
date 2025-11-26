@@ -1,6 +1,6 @@
 import logger from './logger';
 import { config } from '../config';
-import { fetchWithRetry } from './fetchWithRetry';
+import { fetchWithRetry, FetchError, TimeoutError, NetworkError } from './fetchWithRetry';
 
 // Clamp COINGECKO_CACHE_TTL_SECONDS between min and max cooldown values
 const CACHE_TTL = Math.max(
@@ -65,7 +65,8 @@ export type CoinGeckoErrorType =
   | 'forbidden'
   | 'server_error'
   | 'bad_request'
-  | 'unknown';
+  | 'unknown'
+  | 'timeout'; // Added timeout error type
 
 export type CoinGeckoFetchResult =
   | { ok: true; data: CoinGeckoPriceDetail }
@@ -155,25 +156,12 @@ export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeck
       accept: 'application/json',
       'x-cg-demo-api-key': COINGECKO_API_KEY as string,
     },
+    timeout: config.COINGECKO_API_TIMEOUT_MS, // Pass timeout from config
   } as const;
 
   try {
     logger.info(`[CoinGecko] Fetching price for token: ${tokenId}`);
     const response = await fetchWithRetry(url, options);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      const errorType = mapStatusToErrorType(response.status);
-      const message = `[CoinGecko] HTTP ${response.status} ${response.statusText}`;
-
-      logger.error('[CoinGecko] Failed to fetch token price', {
-        status: response.status,
-        statusText: response.statusText,
-        errorBody,
-      });
-
-      return { ok: false, errorType, status: response.status, message };
-    }
 
     const json = (await response.json()) as CoinGeckoPriceResponse;
     const tokenData = json[tokenId];
@@ -209,12 +197,33 @@ export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeck
 
     return { ok: true, data: tokenData };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown network error';
-    logger.error('[CoinGecko] Network or processing error fetching token price', {
+    let errorType: CoinGeckoErrorType = 'unknown';
+    let message: string;
+    let status: number | undefined;
+
+    if (error instanceof TimeoutError) {
+      errorType = 'timeout';
+      message = error.message;
+    } else if (error instanceof NetworkError) {
+      errorType = 'network_error';
+      message = error.message;
+    } else if (error instanceof FetchError) {
+      errorType = mapStatusToErrorType(error.status || 0);
+      message = error.message;
+      status = error.status;
+    } else if (error instanceof Error) {
+      message = error.message;
+    } else {
+      message = 'An unexpected error occurred';
+    }
+
+    logger.error('[CoinGecko] Error fetching token price', {
       errorMessage: message,
+      errorType,
+      status,
       errorStack: error instanceof Error ? error.stack : undefined,
     });
-    return { ok: false, errorType: 'network_error', message };
+    return { ok: false, errorType, status, message };
   }
 }
 
@@ -253,6 +262,8 @@ export function buildFriendlyCoinGeckoError(
       return `Bad request sent to CoinGecko for **${tokenId}**. Please verify the token id and try again.`;
     case 'network_error':
       return `Network error while reaching CoinGecko for **${tokenId}**. Please check your connection and try again.`;
+    case 'timeout':
+      return `CoinGecko API request timed out for **${tokenId}**. Please try again later.`;
     default:
       return `Sorry, couldn't fetch the **${tokenId}** data right now. Please try again later.`;
   }
