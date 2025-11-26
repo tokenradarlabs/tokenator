@@ -11,6 +11,7 @@ const envSchema = z.object({
   COINGECKO_API_FREE_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(30).describe('Rate limit for CoinGecko Free API tier in requests per minute, defaults to 30'),
   COINGECKO_API_PRO_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(1000).describe('Rate limit for CoinGecko Pro API tier in requests per minute'),
   COINGECKO_API_PLAN: z.enum(['free', 'pro']).default('free').describe('CoinGecko API plan (free or pro)'),
+  COINGECKO_API_TIMEOUT_MS: z.coerce.number().int().positive().default(5000).describe('Timeout for CoinGecko API requests in milliseconds, defaults to 5000ms'),
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL').describe('Database connection URL'),
 
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development').describe('Application environment'),
