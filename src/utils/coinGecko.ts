@@ -1,5 +1,6 @@
 import logger from './logger';
 import { config } from '../config';
+import { fetchWithRetry } from './fetchWithRetry';
 
 // Clamp COINGECKO_CACHE_TTL_SECONDS between min and max cooldown values
 const CACHE_TTL = Math.max(
@@ -158,7 +159,7 @@ export async function fetchTokenPriceDetailed(tokenId: string): Promise<CoinGeck
 
   try {
     logger.info(`[CoinGecko] Fetching price for token: ${tokenId}`);
-    const response = await fetch(url, options);
+    const response = await fetchWithRetry(url, options);
 
     if (!response.ok) {
       const errorBody = await response.text();
