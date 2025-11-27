@@ -30,6 +30,7 @@
 
     Optional variables:
     - `NODE_ENV` (defaults to `development`)
+    - `REDIS_URL` (optional, for Redis-backed rate limiting)
 
 4.  Test your configuration:
     ```bash
