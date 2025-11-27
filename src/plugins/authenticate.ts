@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { config } from '../config'; // Assuming named export
+import { sendError } from '../utils/responseHelper';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -12,7 +13,8 @@ export const authenticate = async (request: FastifyRequest, reply: FastifyReply)
   const authHeader = request.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    reply.code(401).send({ error: 'Unauthorized: No token provided.' });
+    sendError(reply, 'Unauthorized: No token provided.', 401);
+    return;
     return;
   }
 
@@ -22,6 +24,7 @@ export const authenticate = async (request: FastifyRequest, reply: FastifyReply)
     const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string };
     request.user = { id: decoded.id };
   } catch (err) {
-    reply.code(401).send({ error: 'Unauthorized: Invalid token.' });
+    sendError(reply, 'Unauthorized: Invalid token.', 401);
+    return;
   }
 };
