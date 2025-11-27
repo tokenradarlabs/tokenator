@@ -8,9 +8,31 @@ const rateLimiterPlugin: FastifyPluginAsync = async (fastify) => {
   let store: RedisStore | undefined;
 
   if (config.REDIS_URL) {
-    const redisClient = new Redis(config.REDIS_URL);
-    store = new RedisStore(redisClient);
-    fastify.log.info('Redis rate limiter enabled.');
+    let redisClient: Redis | undefined;
+    try {
+      redisClient = new Redis(config.REDIS_URL);
+      redisClient.on('error', (err) => {
+        fastify.log.error({ err }, 'Redis client error');
+      });
+      redisClient.on('connect', () => {
+        fastify.log.info('Redis client connected.');
+      });
+      redisClient.on('reconnecting', () => {
+        fastify.log.warn('Redis client reconnecting...');
+      });
+      store = new RedisStore(redisClient);
+      fastify.log.info('Redis rate limiter enabled.');
+
+      fastify.addHook('onClose', async () => {
+        if (redisClient) {
+          await redisClient.quit();
+          fastify.log.info('Redis client quit successfully.');
+        }
+      });
+    } catch (error) {
+      fastify.log.error({ error }, 'Failed to initialize Redis rate limiter. Falling back to in-memory store.');
+      // Fallback to in-memory store by not setting 'store'
+    }
   } else {
     fastify.log.warn('Redis is not configured for rate limiting. Using in-memory store. Consider configuring REDIS_URL for distributed deployments.');
   }
