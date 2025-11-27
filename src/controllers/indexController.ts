@@ -1,3 +1,4 @@
+import { FastifyInstance } from 'fastify';
 import { authenticate } from '../plugins/authenticate';
 import { sendSuccess } from '../utils/responseHelper';
 
