@@ -13,6 +13,7 @@ const envSchema = z.object({
   COINGECKO_API_PLAN: z.enum(['free', 'pro']).default('free').describe('CoinGecko API plan (free or pro)'),
   COINGECKO_API_TIMEOUT_MS: z.coerce.number().int().positive().default(5000).describe('Timeout for CoinGecko API requests in milliseconds, defaults to 5000ms'),
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL').describe('Database connection URL'),
+  REDIS_URL: z.string().url('REDIS_URL must be a valid URL').optional().describe('Redis connection URL for rate limiting and caching'),
 
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development').describe('Application environment'),
 });

@@ -40,6 +40,17 @@ if (isDevelopment()) {
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `NODE_ENV` | `development` \| `production` \| `test` | `development` | Runtime environment |
+| `REDIS_URL` | string (URL) | None | Redis connection URL for distributed rate limiting and caching. Recommended for multi-instance deployments. |
+
+## Redis for Rate Limiting
+
+By default, the application uses an in-memory store for rate limiting. This is suitable for single-instance deployments. However, for distributed deployments with multiple instances, it is highly recommended to configure a Redis instance to ensure consistent global rate limiting across all instances.
+
+To enable Redis for rate limiting, set the `REDIS_URL` environment variable to your Redis connection string. If `REDIS_URL` is not provided, the application will fall back to the in-memory store and emit a warning at startup.
+
+Example `REDIS_URL`:
+`redis://localhost:6379/0`
+`rediss://user:password@host:port`
 
 ## Validation
 

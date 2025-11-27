@@ -1,13 +1,26 @@
 import { FastifyPluginAsync } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
+import Redis from 'ioredis';
+import RedisStore from '@fastify/rate-limit-redis';
+import { config } from '../config';
 
 const rateLimiterPlugin: FastifyPluginAsync = async (fastify) => {
+  let store: RedisStore | undefined;
+
+  if (config.REDIS_URL) {
+    const redisClient = new Redis(config.REDIS_URL);
+    store = new RedisStore(redisClient);
+    fastify.log.info('Redis rate limiter enabled.');
+  } else {
+    fastify.log.warn('Redis is not configured for rate limiting. Using in-memory store. Consider configuring REDIS_URL for distributed deployments.');
+  }
+
   fastify.register(fastifyRateLimit, {
     max: 100, // Max requests per windowMs
     timeWindow: 60 * 1000, // 1 minute
     hook: 'preHandler', // Hook to apply the rate limit
     allowList: [], // IP addresses that are not rate limited
-    redis: undefined, // No redis by default, in-memory store
+    store, // Use Redis store if configured, otherwise in-memory
     headers: true, // Add X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset headers
     continueExceeding: false, // Do not continue to process requests once the limit is reached
     keyGenerator: (request) => {
@@ -15,9 +28,7 @@ const rateLimiterPlugin: FastifyPluginAsync = async (fastify) => {
     },
     errorResponseBuilder: (request, context) => {
       return {
-        code: 429,
-        message: 'Too Many Requests',
-        data: `You have exceeded the request limit of ${context.max} requests per ${context.timeWindow}ms.`,
+        message: `You have exceeded the request limit of ${context.max} requests per ${context.after}.`,
       };
     },
   });
