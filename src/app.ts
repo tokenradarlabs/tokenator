@@ -5,6 +5,7 @@ import logger from './utils/logger';
 import { router } from './router';
 import { indexController } from './controllers/indexController';
 import { priceController } from './controllers/priceController';
+import { rateLimiter } from './utils/rateLimiter';
 import { HttpError } from './utils/httpErrors';
 
 export function buildApp() {
@@ -15,6 +16,8 @@ export function buildApp() {
   // Register plugins and middleware in the correct order
   // requestTiming should come first to log all requests
   app.register(requestTiming);
+  // Register rate limiter before other routes
+  app.register(rateLimiter);
   // authenticate should come after timing, but before routes that require authentication
 
   app.register(router);
