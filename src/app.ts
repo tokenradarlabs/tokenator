@@ -15,6 +15,7 @@ export function buildApp() {
   // Register plugins and middleware in the correct order
   // requestTiming should come first to log all requests
   app.register(requestTiming);
+  app.register(authenticate);
   // authenticate should come after timing, but before routes that require authentication
 
   app.register(router);
