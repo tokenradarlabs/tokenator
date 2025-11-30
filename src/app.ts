@@ -9,7 +9,7 @@ import { HttpError } from './utils/httpErrors';
 
 export function buildApp() {
   const app = Fastify({
-    logger: true, // Enable Fastify's built-in logger
+    logger: logger, // Use the custom logger instance
   });
 
   // Register plugins and middleware in the correct order
