@@ -22,7 +22,6 @@ describe('requestTiming plugin', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
     resetLatencyMetrics();
   });
 
@@ -44,20 +43,50 @@ describe('requestTiming plugin', () => {
   });
 
   it('should record latency on onResponse hook', async () => {
+    const originalDateNow = Date.now;
+    const onRequestHook = mockApp.addHook.mock.calls[0][1];
     const onResponseHook = mockApp.addHook.mock.calls[1][1];
+
     const mockRequest = {
       method: 'GET',
       url: '/test-url',
-      requestStartTime: Date.now() - 100, // Simulate a 100ms response time
     } as any;
     const mockReply = {} as any;
+
+    Object.defineProperty(global, 'Date', {
+      value: class extends Date {
+        constructor(dateString?: string) {
+          super(dateString);
+          if (dateString) return new originalDateNow(dateString);
+          return new originalDateNow(1000); // Fixed start time
+        }
+      },
+      writable: true,
+    });
+    
+    await onRequestHook(mockRequest, mockReply);
+
+    Object.defineProperty(global, 'Date', {
+      value: class extends Date {
+        constructor(dateString?: string) {
+          super(dateString);
+          if (dateString) return new originalDateNow(dateString);
+          return new originalDateNow(1100); // Fixed end time (100ms later)
+        }
+      },
+      writable: true,
+    });
 
     await onResponseHook(mockRequest, mockReply);
 
     expect(recordLatency).toHaveBeenCalledTimes(1);
-    expect(recordLatency).toHaveBeenCalledWith('GET:/test-url', expect.any(Number));
+    expect(recordLatency).toHaveBeenCalledWith('GET:/test-url', 100);
     const recordedDuration = (recordLatency as jest.Mock).mock.calls[0][1];
-    expect(recordedDuration).toBeGreaterThanOrEqual(99); // Should be around 100ms
-    expect(recordedDuration).toBeLessThanOrEqual(101);
+    expect(recordedDuration).toBe(100);
+
+    Object.defineProperty(global, 'Date', {
+      value: originalDateNow,
+      writable: true,
+    });
   });
 });
