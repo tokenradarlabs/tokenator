@@ -2,7 +2,6 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { NotFoundError, BadRequestError, InternalServerError } from '../../utils/httpErrors';
 import { validatePriceAlertValue } from '../../utils/priceValidation';
 import { CreatePriceAlertSchema, UpdatePriceAlertSchema, AlertParamsSchema, CreatePriceAlertInput, UpdatePriceAlertInput } from '../../utils/schemas/priceAlertSchemas';
-import logger from '../../utils/logger';
 import { z } from 'zod';
 
 export async function priceAlertController(fastify: FastifyInstance) {
@@ -13,7 +12,7 @@ export async function priceAlertController(fastify: FastifyInstance) {
       const parsedBody = CreatePriceAlertSchema.safeParse(request.body);
 
       if (!parsedBody.success) {
-        logger.warn('[PriceAlertController] Create price alert validation error:', parsedBody.error.errors);
+        request.log.warn({ errors: parsedBody.error.errors }, '[PriceAlertController] Create price alert validation error');
         throw new BadRequestError(parsedBody.error.errors.map(e => e.message).join(', '));
       }
 
@@ -28,7 +27,7 @@ export async function priceAlertController(fastify: FastifyInstance) {
 
       // Placeholder for creating the alert in the database
       // In a real application, you would interact with your Prisma client or ORM here
-      logger.info(`[PriceAlertController] Creating price alert for token: ${token}, price: ${price}, direction: ${direction}, userId: ${userId}, triggerOnce: ${triggerOnce}`);
+      request.log.info({ token, price, direction, userId, triggerOnce }, `[PriceAlertController] Creating price alert for token: ${token}`);
 
       reply.status(201).send({ message: 'Price alert created successfully (placeholder).' });
 
@@ -36,7 +35,7 @@ export async function priceAlertController(fastify: FastifyInstance) {
       if (error instanceof BadRequestError || error instanceof NotFoundError) {
         throw error;
       } else {
-        logger.error('[PriceAlertController] Error creating price alert:', error);
+        request.log.error({ error }, '[PriceAlertController] Error creating price alert');
         throw new InternalServerError('Failed to create price alert.');
       }
     }
@@ -49,7 +48,7 @@ export async function priceAlertController(fastify: FastifyInstance) {
       const parsedBody = UpdatePriceAlertSchema.safeParse(request.body);
 
       if (!parsedBody.success) {
-        logger.warn('[PriceAlertController] Update price alert validation error:', parsedBody.error.errors);
+        request.log.warn({ errors: parsedBody.error.errors }, '[PriceAlertController] Update price alert validation error');
         throw new BadRequestError(parsedBody.error.errors.map(e => e.message).join(', '));
       }
 
@@ -71,7 +70,7 @@ export async function priceAlertController(fastify: FastifyInstance) {
       }
 
       // Placeholder for updating the alert in the database
-      logger.info(`[PriceAlertController] Updating price alert ${alertId} with token: ${token}, price: ${price}, direction: ${direction}, triggerOnce: ${triggerOnce}`);
+      request.log.info({ alertId, token, price, direction, triggerOnce }, `[PriceAlertController] Updating price alert ${alertId}`);
 
       reply.send({ message: `Price alert ${alertId} updated successfully (placeholder).` });
 
@@ -79,7 +78,7 @@ export async function priceAlertController(fastify: FastifyInstance) {
       if (error instanceof BadRequestError || error instanceof NotFoundError) {
         throw error;
       } else {
-        logger.error('[PriceAlertController] Error updating price alert:', error);
+        request.log.error({ error }, '[PriceAlertController] Error updating price alert');
         throw new InternalServerError('Failed to update price alert.');
       }
     }
