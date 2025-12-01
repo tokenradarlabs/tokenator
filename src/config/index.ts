@@ -2,6 +2,8 @@ import { z } from 'zod';
 import 'dotenv/config';
 
 const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development').describe('Application environment'),
+  PORT: z.coerce.number().int().positive().default(3000).describe('The port on which the application server will listen'),
   DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN is required').describe('Discord bot token for authentication'),
   COINGECKO_API_KEY: z.string().min(1, 'COINGECKO_API_KEY is required').describe('CoinGecko API key for cryptocurrency data'),
   ANKR_API_KEY: z.string().min(1, 'ANKR_API_KEY is required').describe('Ankr API key for blockchain data'),
@@ -14,8 +16,7 @@ const envSchema = z.object({
   COINGECKO_API_TIMEOUT_MS: z.coerce.number().int().positive().default(5000).describe('Timeout for CoinGecko API requests in milliseconds, defaults to 5000ms'),
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL').describe('Database connection URL'),
   REDIS_URL: z.string().url('REDIS_URL must be a valid URL').optional().describe('Redis connection URL for rate limiting and caching'),
-
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development').describe('Application environment'),
+  UNISWAP_SUBGRAPH_URL: z.string().url('UNISWAP_SUBGRAPH_URL must be a valid URL').optional().describe('URL for the Uniswap subgraph. Required for Uniswap price fetching'),
 });
 
 function validateEnvironment() {
