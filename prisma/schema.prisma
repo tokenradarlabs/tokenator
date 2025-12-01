@@ -110,3 +110,23 @@ model FailedNotification {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+model ApiKey {
+  id        String       @id @default(uuid())
+  key       String       @unique
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  usageCount Int        @default(0)
+  usages    ApiKeyUsage[]
+}
+
+model ApiKeyUsage {
+  id        String    @id @default(uuid())
+  apiKeyId  String
+  apiKey    ApiKey    @relation(fields: [apiKeyId], references: [id])
+  timestamp DateTime  @default(now())
+
+  @@index([apiKeyId])
+  @@index([timestamp])
+}
+

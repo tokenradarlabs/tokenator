@@ -1,7 +1,8 @@
-import { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify';
+import { FastifyRequest, FastifyReply, HookHandlerDoneFunction, FastifyBaseLogger } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { config } from '../config'; // Assuming named export
 import { sendError } from '../utils/responseHelper';
+import prisma from '../utils/prisma'; // Import prisma client
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -35,6 +36,29 @@ export const authenticate = async (request: FastifyRequest, reply: FastifyReply)
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string };
     request.user = { id: decoded.id };
+
+    // API Key Usage Tracking (non-blocking)
+    const trackApiKeyUsage = async (apiKeyId: string, log: FastifyBaseLogger) => {
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.apiKey.update({
+            where: { id: apiKeyId },
+            data: { usageCount: { increment: 1 } },
+          });
+
+          await tx.apiKeyUsage.create({
+            data: {
+              apiKeyId: apiKeyId,
+              timestamp: new Date(),
+            },
+          });
+        });
+      } catch (dbError: any) {
+        log.error(`Failed to track API key usage for key ID ${apiKeyId}: ${dbError.message}`);
+      }
+    };
+    trackApiKeyUsage(decoded.id, request.log);
+
   } catch (err) {
     request.log.warn(`Authentication failed: Invalid token. Error: ${err.message}`);
     sendError(reply, 'Unauthorized: Invalid token.', 401);
