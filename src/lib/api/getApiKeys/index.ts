@@ -10,7 +10,8 @@ interface GetApiKeysParams {
 interface GetApiKeysResult {
   apiKeys: {
     id: string;
-    address: string;
+    key: string;
+    usageCount: number;
   }[];
   nextCursor?: string;
 }
@@ -32,11 +33,12 @@ export async function getApiKeys(params: GetApiKeysParams): Promise<GetApiKeysRe
     findManyArgs.skip = 1; // Skip the cursor itself
   }
 
-  const apiKeys = await prisma.token.findMany({
+  const apiKeys = await prisma.apiKey.findMany({
     ...findManyArgs,
     select: {
       id: true,
-      address: true,
+      key: true,
+      usageCount: true,
     },
   });
 
