@@ -4,29 +4,29 @@ This document outlines the environment variables used by the Tokenator applicati
 
 ## Validation Logic
 
-The application uses `zod` for robust environment variable validation. The schema is defined in [`src/config/index.ts`](./src/config/index.ts). This ensures that all necessary variables are present and correctly formatted before the application starts.
+The application uses `zod` for robust environment variable validation. The schema is defined in [`src/config/index.ts`](../src/config/index.ts). This ensures that all necessary variables are present and correctly formatted before the application starts.
 
 ## Required Environment Variables
 
 The following table lists the essential environment variables that must be set for the Tokenator application.
 
-| Variable Name                               | Type       | Description                                                                    | Example                                                      |
-|---------------------------------------------|------------|--------------------------------------------------------------------------------|--------------------------------------------------------------|
-| `NODE_ENV`                                  | `string`   | Application environment.                                                       | `development`, `production`, `test`                          |
-| `PORT`                                      | `number`   | The port on which the application server will listen.                          | `3000`                                                       |
-| `DISCORD_TOKEN`                             | `string`   | Discord bot token for authentication.                                          | `YOUR_DISCORD_BOT_TOKEN`                                     |
-| `COINGECKO_API_KEY`                         | `string`   | CoinGecko API key for cryptocurrency data.                                     | `YOUR_COINGECKO_API_KEY`                                     |
-| `ANKR_API_KEY`                              | `string`   | Ankr API key for blockchain data.                                              | `YOUR_ANKR_API_KEY`                                          |
-| `COINGECKO_CACHE_TTL_SECONDS`               | `number`   | CoinGecko cache time-to-live in seconds.                                       | `60`                                                         |
-| `COINGECKO_API_CACHE_COOLDOWN_SECONDS_MIN`  | `number`   | Minimum cooldown in seconds for CoinGecko API cache.                           | `60`                                                         |
-| `COINGECKO_API_CACHE_COOLDOWN_SECONDS_MAX`  | `number`   | Maximum cooldown in seconds for CoinGecko API cache.                           | `300`                                                        |
-| `COINGECKO_API_FREE_RATE_LIMIT_PER_MINUTE`  | `number`   | Rate limit for CoinGecko Free API tier in requests per minute.                 | `30`                                                         |
-| `COINGECKO_API_PRO_RATE_LIMIT_PER_MINUTE`   | `number`   | Rate limit for CoinGecko Pro API tier in requests per minute.                  | `1000`                                                       |
-| `COINGECKO_API_PLAN`                        | `enum`     | CoinGecko API plan.                                                            | `free`, `pro`                                                |
-| `COINGECKO_API_TIMEOUT_MS`                  | `number`   | Timeout for CoinGecko API requests in milliseconds.                            | `5000`                                                       |
-| `DATABASE_URL`                              | `string`   | Database connection URL.                                                       | `postgresql://user:password@host:port/database`              |
-| `REDIS_URL`                                 | `string`   | (Optional) Redis connection URL for rate limiting and caching.                 | `redis://localhost:6379`                                     |
-| `UNISWAP_SUBGRAPH_URL`                      | `string`   | (Optional) URL for the Uniswap subgraph. Required for Uniswap price fetching. | `https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2` |
+| Variable Name | Type | Required | Default | Description | Example |
+|---------------|------|----------|---------|-------------|---------|
+| `NODE_ENV` | `enum` (`development`, `production`, `test`) | Yes | `development` | Application environment. | `development`, `production`, `test` |
+| `PORT` | `number` | Yes | `3000` | The port on which the application server will listen. | `3000` |
+| `DISCORD_TOKEN` | `string` | Yes | None | Discord bot token for authentication. | `YOUR_DISCORD_BOT_TOKEN` |
+| `COINGECKO_API_KEY` | `string` | Yes | None | CoinGecko API key for cryptocurrency data. | `YOUR_COINGECKO_API_KEY` |
+| `ANKR_API_KEY` | `string` | Yes | None | Ankr API key for blockchain data. | `YOUR_ANKR_API_KEY` |
+| `COINGECKO_CACHE_TTL_SECONDS` | `number` | Yes | `60` | CoinGecko cache time-to-live in seconds. | `60` |
+| `COINGECKO_API_CACHE_COOLDOWN_SECONDS_MIN` | `number` | Yes | `60` | Minimum cooldown in seconds for CoinGecko API cache. | `60` |
+| `COINGECKO_API_CACHE_COOLDOWN_SECONDS_MAX` | `number` | Yes | `300` | Maximum cooldown in seconds for CoinGecko API cache. | `300` |
+| `COINGECKO_API_FREE_RATE_LIMIT_PER_MINUTE` | `number` | Yes | `30` | Rate limit for CoinGecko Free API tier in requests per minute. | `30` |
+| `COINGECKO_API_PRO_RATE_LIMIT_PER_MINUTE` | `number` | Yes | `1000` | Rate limit for CoinGecko Pro API tier in requests per minute. | `1000` |
+| `COINGECKO_API_PLAN` | `enum` (`free`, `pro`) | Yes | `free` | CoinGecko API plan. | `free`, `pro` |
+| `COINGECKO_API_TIMEOUT_MS` | `number` | Yes | `5000` | Timeout for CoinGecko API requests in milliseconds. | `5000` |
+| `DATABASE_URL` | `string` | Yes | None | Database connection URL. | `postgresql://user:password@host:port/database` |
+| `REDIS_URL` | `string` | No | None | (Optional) Redis connection URL for rate limiting and caching. | `redis://localhost:6379` |
+| `UNISWAP_SUBGRAPH_URL` | `string` | No | None | (Optional) URL for the Uniswap subgraph. Required for Uniswap price fetching. | `https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2` |
 
 ## Examples
 
