@@ -6,7 +6,7 @@ const mockFindMany = jest.fn();
 
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => ({
-    token: {
+    apiKey: {
       findMany: mockFindMany,
     },
   })),
@@ -28,8 +28,8 @@ describe('getApiKeysController', () => {
 
   test('GET /api-keys should return a list of API keys', async () => {
     mockFindMany.mockResolvedValueOnce([
-      { id: 'token1', address: 'address1' },
-      { id: 'token2', address: 'address2' },
+      { id: 'key1', key: 'api-key-1', usageCount: 10 },
+      { id: 'key2', key: 'api-key-2', usageCount: 20 },
     ]);
 
     const response = await fastify.inject({
@@ -40,8 +40,8 @@ describe('getApiKeysController', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       apiKeys: [
-        { id: 'token1', address: 'address1' },
-        { id: 'token2', address: 'address2' },
+        { id: 'key1', key: 'api-key-1', usageCount: 10 },
+        { id: 'key2', key: 'api-key-2', usageCount: 20 },
       ],
       nextCursor: undefined,
     });
@@ -53,9 +53,9 @@ describe('getApiKeysController', () => {
 
   test('GET /api-keys should apply limit pagination', async () => {
     mockFindMany.mockResolvedValueOnce([
-      { id: 'token1', address: 'address1' },
-      { id: 'token2', address: 'address2' },
-      { id: 'token3', address: 'address3' },
+      { id: 'key1', key: 'api-key-1', usageCount: 10 },
+      { id: 'key2', key: 'api-key-2', usageCount: 20 },
+      { id: 'key3', key: 'api-key-3', usageCount: 30 },
     ]);
 
     const response = await fastify.inject({
@@ -66,10 +66,10 @@ describe('getApiKeysController', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       apiKeys: [
-        { id: 'token1', address: 'address1' },
-        { id: 'token2', address: 'address2' },
+        { id: 'key1', key: 'api-key-1', usageCount: 10 },
+        { id: 'key2', key: 'api-key-2', usageCount: 20 },
       ],
-      nextCursor: 'token3',
+      nextCursor: 'key3',
     });
     expect(mockFindMany).toHaveBeenCalledWith({
       take: 3,
@@ -79,28 +79,28 @@ describe('getApiKeysController', () => {
 
   test('GET /api-keys should apply cursor and limit pagination', async () => {
     mockFindMany.mockResolvedValueOnce([
-      { id: 'token3', address: 'address3' },
-      { id: 'token4', address: 'address4' },
-      { id: 'token5', address: 'address5' },
+      { id: 'key3', key: 'api-key-3', usageCount: 30 },
+      { id: 'key4', key: 'api-key-4', usageCount: 40 },
+      { id: 'key5', key: 'api-key-5', usageCount: 50 },
     ]);
 
     const response = await fastify.inject({
       method: 'GET',
-      url: '/api-keys?cursor=token2&limit=2',
+      url: '/api-keys?cursor=key2&limit=2',
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       apiKeys: [
-        { id: 'token3', address: 'address3' },
-        { id: 'token4', address: 'address4' },
+        { id: 'key3', key: 'api-key-3', usageCount: 30 },
+        { id: 'key4', key: 'api-key-4', usageCount: 40 },
       ],
-      nextCursor: 'token5',
+      nextCursor: 'key5',
     });
     expect(mockFindMany).toHaveBeenCalledWith({
       take: 3,
       orderBy: { id: 'asc' },
-      cursor: { id: 'token2' },
+      cursor: { id: 'key2' },
       skip: 1,
     });
   });
