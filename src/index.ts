@@ -410,11 +410,6 @@ async function main(): Promise<void> {
 
 interface CliArgs {
   help: boolean;
-  // Add other CLI arguments here as needed
-}
-
-interface CliArgs {
-  help: boolean;
   exportAlerts: {
     discordServerId: string;
     channelId: string;
@@ -463,7 +458,7 @@ Usage:
 
 Options:
   -h, --help                          Display this help message.
-  --export-alerts <SERVER_ID> <CHANNEL_ID>  Export all alerts for a specific Discord server and channel as JSON.
+  --export-alerts <DISCORD_SERVER_ID> <DISCORD_CHANNEL_ID>  Export all alerts for a specific Discord server and channel as JSON.
 
 Description:
   Tokenator is a feature-rich Discord bot for token price alerts and information.
@@ -474,15 +469,17 @@ Description:
   `);
 }
 
-async function cliExportAlerts(discordServerId: string, channelId: string): Promise<void> {
+async function cliExportAlerts(discordServerId: string, channelId: string): Promise<number> {
   try {
     const alertsJson = await exportAlerts(prisma, discordServerId, channelId);
     console.log(alertsJson);
     logger.info(`Alerts exported for server ${discordServerId} and channel ${channelId} via CLI.`);
-    process.exit(0);
+    return 0;
   } catch (error) {
     logger.error(`Failed to export alerts via CLI for server ${discordServerId}, channel ${channelId}: ${error.message}`);
-    process.exit(1);
+    return 1;
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -499,9 +496,8 @@ if (require.main === module) {
 
   if (cliArgs.exportAlerts) {
     logger.info('Running alert export command...');
-    // Ensure prisma and exportAlerts are imported correctly for CLI usage
-    // This assumes `exportAlerts` is available globally or imported here
-    cliExportAlerts(cliArgs.exportAlerts.discordServerId, cliArgs.exportAlerts.channelId);
+    const exitCode = await cliExportAlerts(cliArgs.exportAlerts.discordServerId, cliArgs.exportAlerts.channelId);
+    process.exit(exitCode);
   } else {
     main();
   }

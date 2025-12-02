@@ -56,18 +56,18 @@ Beyond the Discord bot, Tokenator also provides command-line utilities for speci
 
 ### Exporting Alerts
 
-You can export all alerts for a specific Discord server and channel directly from the command line as a JSON file. This is useful for backup or migration purposes.
+You can export all alerts for a specific Discord server and channel directly from the command line as JSON to `stdout`. This is useful for backup or migration purposes.
 
 ```bash
-npm start -- --export-alerts <DISCORD_SERVER_ID> <DISCORD_CHANNEL_ID>
+npm start -- --export-alerts <DISCORD_SERVER_ID> <DISCORD_CHANNEL_ID> > alerts.json
 # Or, for development:
-ts-node src/index.ts --export-alerts <DISCORD_SERVER_ID> <DISCORD_CHANNEL_ID>
+ts-node src/index.ts --export-alerts <DISCORD_SERVER_ID> <DISCORD_CHANNEL_ID> > alerts.json
 ```
 
 *   `<DISCORD_SERVER_ID>`: The ID of the Discord server (guild) where the alerts are configured.
 *   `<DISCORD_CHANNEL_ID>`: The ID of the specific channel within that server where the alerts are configured.
 
-The command will output a JSON string to `stdout` containing all price and volume alerts for the specified server and channel.
+The command will output a JSON string to `stdout` containing all price and volume alerts for the specified server and channel. This output can be redirected to a file, as shown in the examples.
 
 **Note:** This command bypasses the Discord bot interface and interacts directly with the database. Ensure you have appropriate permissions and the `DATABASE_URL` environment variable is correctly set.
 
