@@ -1,12 +1,17 @@
-import { validatePriceAlertValue, _validateNumericInput, _checkAbsoluteBounds, getTokenPriceBounds } from './priceValidation';
-import { getStandardizedTokenId } from './constants';
+import { validatePriceAlertValue, _validateNumericInput, _checkAbsoluteBounds, getTokenPriceBounds, sanitizeTokenSymbol } from './priceValidation';
+import { resolveTokenAlias, SUPPORTED_TOKENS } from './constants';
 import { formatPrice } from './priceFormatter';
 import { getLatestTokenPriceFromDatabase, fetchTokenPrice } from './coinGecko';
 import { CreatePriceAlertSchema, UpdatePriceAlertSchema } from './schemas/priceAlertSchemas';
 
 // Mock external dependencies
 jest.mock('./constants', () => ({
-  getStandardizedTokenId: jest.fn(),
+  resolveTokenAlias: jest.fn(),
+  SUPPORTED_TOKENS: {
+    "scout-protocol-token": "scout-protocol-token",
+    bitcoin: "bitcoin",
+    ethereum: "ethereum",
+  },
 }));
 
 jest.mock('./priceFormatter', () => ({
@@ -22,13 +27,35 @@ describe('priceValidation', () => {
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
-    getStandardizedTokenId.mockImplementation((id) => {
+    resolveTokenAlias.mockImplementation((id) => {
       if (id === 'dev' || id === 'scout-protocol-token') return 'scout-protocol-token';
       if (id === 'btc' || id === 'bitcoin') return 'bitcoin';
       if (id === 'eth' || id === 'ethereum') return 'ethereum';
       return null;
     });
     formatPrice.mockImplementation((price) => `$${price.toFixed(2)}`);
+  });
+
+  describe('sanitizeTokenSymbol', () => {
+    it('should trim whitespace and convert to lowercase', () => {
+      expect(sanitizeTokenSymbol('  ETH  ')).toBe('eth');
+      expect(sanitizeTokenSymbol('BTC')).toBe('btc');
+      expect(sanitizeTokenSymbol('Scout-Protocol-Token')).toBe('scout-protocol-token');
+    });
+
+    it('should return null for empty string or string with only whitespace', () => {
+      expect(sanitizeTokenSymbol('')).toBeNull();
+      expect(sanitizeTokenSymbol('   ')).toBeNull();
+    });
+
+    it('should return null for null or undefined input', () => {
+      expect(sanitizeTokenSymbol(null)).toBeNull();
+      expect(sanitizeTokenSymbol(undefined)).toBeNull();
+    });
+
+    it('should return the same string if already clean', () => {
+      expect(sanitizeTokenSymbol('ethereum')).toBe('ethereum');
+    });
   });
 
   describe('_validateNumericInput', () => {
@@ -155,22 +182,53 @@ describe('priceValidation', () => {
     beforeEach(() => {
       getLatestTokenPriceFromDatabase.mockResolvedValue(mockCurrentPrice);
       fetchTokenPrice.mockResolvedValue({ usd: mockCurrentPrice });
+      // Mock resolveTokenAlias to return standardized ID based on sanitized input
+      resolveTokenAlias.mockImplementation((id) => {
+        if (id === 'dev' || id === 'scout-protocol-token') return 'scout-protocol-token';
+        if (id === 'btc' || id === 'bitcoin') return 'bitcoin';
+        if (id === 'eth' || id === 'ethereum') return 'ethereum';
+        return null;
+      });
     });
 
     it('should return isValid: true for a valid price within bounds and realistic deviation (up)', async () => {
       const result = await validatePriceAlertValue('dev', 110, 'up');
-      expect(result).toEqual({ isValid: true, parsedPriceValue: 110, currentPrice: mockCurrentPrice });
+      expect(result).toEqual({ isValid: true, parsedPriceValue: 110, currentPrice: mockCurrentPrice, sanitizedTokenId: 'scout-protocol-token' });
     });
 
     it('should return isValid: true for a valid price within bounds and realistic deviation (down)', async () => {
       const result = await validatePriceAlertValue('dev', 90, 'down');
-      expect(result).toEqual({ isValid: true, parsedPriceValue: 90, currentPrice: mockCurrentPrice });
+      expect(result).toEqual({ isValid: true, parsedPriceValue: 90, currentPrice: mockCurrentPrice, sanitizedTokenId: 'scout-protocol-token' });
     });
 
-    it('should return isValid: false for unsupported token', async () => {
+    it('should return isValid: true for a valid price with mixed-case token input', async () => {
+      const result = await validatePriceAlertValue('ETH', 3000, 'up');
+      expect(result.isValid).toBe(true);
+      expect(result.sanitizedTokenId).toBe('ethereum');
+    });
+
+    it('should return isValid: true for a valid price with padded token input', async () => {
+      const result = await validatePriceAlertValue('  bTc  ', 50000, 'up');
+      expect(result.isValid).toBe(true);
+      expect(result.sanitizedTokenId).toBe('bitcoin');
+    });
+
+    it('should return isValid: false for empty token input', async () => {
+      const result = await validatePriceAlertValue('', 100, 'up');
+      expect(result.isValid).toBe(false);
+      expect(result.errorMessage).toContain('Token symbol cannot be empty');
+    });
+
+    it('should return isValid: false for token input with only spaces', async () => {
+      const result = await validatePriceAlertValue('   ', 100, 'up');
+      expect(result.isValid).toBe(false);
+      expect(result.errorMessage).toContain('Token symbol cannot be empty');
+    });
+
+    it('should return isValid: false for unsupported token with specific error message', async () => {
       const result = await validatePriceAlertValue('unsupported-token', 100, 'up');
       expect(result.isValid).toBe(false);
-      expect(result.errorMessage).toContain('Unsupported token');
+      expect(result.errorMessage).toMatch(/Unsupported token: "unsupported-token". Supported tokens are: "scout-protocol-token", "bitcoin", "ethereum"./);
     });
 
     it('should return isValid: false for invalid numeric input', async () => {
@@ -222,7 +280,7 @@ describe('priceValidation', () => {
     it('should use CoinGecko if database price is null', async () => {
       getLatestTokenPriceFromDatabase.mockResolvedValue(null);
       const result = await validatePriceAlertValue('dev', 110, 'up');
-      expect(getLatestTokenPriceFromDatabase).toHaveBeenCalledWith('dev');
+      expect(getLatestTokenPriceFromDatabase).toHaveBeenCalledWith('scout-protocol-token'); // Should use standardized ID
       expect(fetchTokenPrice).toHaveBeenCalledWith('scout-protocol-token');
       expect(result.isValid).toBe(true);
       expect(result.currentPrice).toBe(mockCurrentPrice);
@@ -247,6 +305,16 @@ describe('priceValidation', () => {
   });
 
   describe('getTokenPriceBounds', () => {
+    beforeEach(() => {
+      // Mock resolveTokenAlias for getTokenPriceBounds tests as well
+      resolveTokenAlias.mockImplementation((id) => {
+        if (id === 'dev' || id === 'scout-protocol-token') return 'scout-protocol-token';
+        if (id === 'btc' || id === 'bitcoin') return 'bitcoin';
+        if (id === 'eth' || id === 'ethereum') return 'ethereum';
+        return null;
+      });
+    });
+
     it('should return correct bounds for a supported token (DEV)', () => {
       const bounds = getTokenPriceBounds('dev');
       expect(bounds).toEqual({ min: 0.00001, max: 100, name: 'DEV' });
@@ -263,9 +331,19 @@ describe('priceValidation', () => {
     });
 
     it('should return null for a token with no standardized ID', () => {
-      getStandardizedTokenId.mockReturnValue(null);
+      resolveTokenAlias.mockReturnValue(null);
       const bounds = getTokenPriceBounds('unknown');
       expect(bounds).toBeNull();
+    });
+
+    it('should return null for an empty token symbol', () => {
+      const bounds = getTokenPriceBounds(' ');
+      expect(bounds).toBeNull();
+    });
+
+    it('should return correct bounds for a token with mixed-case input', () => {
+      const bounds = getTokenPriceBounds('BTC ');
+      expect(bounds).toEqual({ min: 1, max: 10000000, name: 'BTC' });
     });
   });
 

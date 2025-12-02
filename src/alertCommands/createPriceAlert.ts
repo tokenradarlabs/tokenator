@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { createContextualLogger } from '../utils/logger';
 import { sendErrorReply, errorMessages } from '../utils/errorMessageUtils';
 import { createPriceAlert } from '../lib/alertcommands';
-import { validatePriceAlertValue } from '../utils/priceValidation';
+import { validatePriceAlertValue, sanitizeTokenSymbol } from '../utils/priceValidation';
 import { sanitizeString, sanitizeNumber } from '../utils/inputSanitization';
 
 export const createPriceAlertCommand = new SlashCommandBuilder()
@@ -12,14 +12,9 @@ export const createPriceAlertCommand = new SlashCommandBuilder()
     option
       .setName('token-id')
       .setDescription(
-        'The token to create an alert for (supported: dev, eth, btc)'
+        'The token to create an alert for (e.g., "dev", "eth", "btc")'
       )
       .setRequired(true)
-      .addChoices(
-        { name: 'scout-protocol-token (DEV)', value: 'scout-protocol-token' },
-        { name: 'Bitcoin (BTC)', value: 'bitcoin' },
-        { name: 'Ethereum (ETH)', value: 'ethereum' }
-      )
   )
   .addStringOption(option =>
     option
@@ -43,7 +38,8 @@ export async function handleCreatePriceAlert(
     | 'up'
     | 'down' | null;
   const value = sanitizeNumber(interaction.options.getNumber('value', true));
-  const tokenId = sanitizeString(interaction.options.getString('token-id', true));
+  const tokenId = interaction.options.getString('token-id', true); // Raw input, will be sanitized internally by validatePriceAlertValue
+  
   const { guildId, channelId } = interaction;
   const contextualLogger = createContextualLogger({
     userId: interaction.user.id,
@@ -51,11 +47,6 @@ export async function handleCreatePriceAlert(
     channelId: channelId || undefined,
     commandName: 'create-price-alert',
   });
-
-  if (direction === null || value === null || tokenId === null) {
-    await sendErrorReply(interaction, errorMessages.invalidInput());
-    return;
-  }
 
   const validationResult = await validatePriceAlertValue(
     tokenId,
@@ -73,8 +64,9 @@ export async function handleCreatePriceAlert(
 
   // Use the parsed and validated price value
   const validatedPriceValue = validationResult.parsedPriceValue;
+  const validatedTokenId = validationResult.sanitizedTokenId; // Use the sanitized token ID from validationResult
 
-  if (validatedPriceValue === undefined) {
+  if (validatedPriceValue === undefined || validatedTokenId === undefined) {
     await sendErrorReply(interaction, errorMessages.internalPriceValidation());
     return;
   }
@@ -90,7 +82,7 @@ export async function handleCreatePriceAlert(
 
   try {
     const result = await createPriceAlert({
-      tokenId,
+      tokenId: validatedTokenId, // Use the sanitized and validated token ID
       direction,
       value: validatedPriceValue,
       guildId,

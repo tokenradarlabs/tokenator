@@ -1,7 +1,7 @@
 import logger from './logger';
 import { getLatestTokenPriceFromDatabase } from './databasePrice';
 import { fetchTokenPrice } from './coinGecko';
-import { resolveTokenAlias } from './constants';
+import { resolveTokenAlias, SUPPORTED_TOKENS } from './constants';
 import { formatPrice } from './priceFormatter';
 
 // Define reasonable price bounds for each token type
@@ -28,6 +28,21 @@ export interface PriceValidationResult {
   errorMessage?: string;
   currentPrice?: number;
   parsedPriceValue?: number; // Added for clarity when parsing string inputs
+  sanitizedTokenId?: string; // Added to return the sanitized token ID
+}
+
+/**
+ * Sanitizes a token symbol input string.
+ * Trims whitespace and converts to lowercase.
+ * @param inputSymbol The raw token symbol string.
+ * @returns The sanitized token symbol, or null if the input is empty or becomes empty after sanitization.
+ */
+export function sanitizeTokenSymbol(inputSymbol: string | null | undefined): string | null {
+  if (typeof inputSymbol !== 'string') {
+    return null;
+  }
+  const sanitized = inputSymbol.trim().toLowerCase();
+  return sanitized === '' ? null : sanitized;
 }
 
 /**
@@ -52,7 +67,7 @@ export function _validateNumericInput(inputPrice: number | string | null | undef
     if (isNaN(parsedPrice)) {
       return {
         isValid: false,
-        errorMessage: `Invalid price input: "${inputPrice}". Please enter a valid numeric value.`,
+        errorMessage: `Invalid price input: "${inputPrice}". Please enter a valid numeric value.`
       };
     }
   } else if (typeof inputPrice === 'number') {
@@ -60,7 +75,7 @@ export function _validateNumericInput(inputPrice: number | string | null | undef
   } else {
     return {
       isValid: false,
-      errorMessage: `Invalid price input type: "${typeof inputPrice}". Please enter a numeric value.`,
+      errorMessage: `Invalid price input type: "${typeof inputPrice}". Please enter a numeric value.`
     };
   }
 
@@ -74,7 +89,7 @@ export function _validateNumericInput(inputPrice: number | string | null | undef
   if (!isFinite(parsedPrice)) {
     return {
       isValid: false,
-      errorMessage: `Price value "${parsedPrice}" is not a finite number. Please enter a realistic numeric value.`,
+      errorMessage: `Price value "${parsedPrice}" is not a finite number. Please enter a realistic numeric value.`
     };
   }
 
@@ -82,7 +97,7 @@ export function _validateNumericInput(inputPrice: number | string | null | undef
   if (parsedPrice <= 0) {
     return {
       isValid: false,
-      errorMessage: `Price value must be positive. You entered: $${formatPrice(parsedPrice)}.`, 
+      errorMessage: `Price value must be positive. You entered: $${formatPrice(parsedPrice)}.`
     };
   }
 
@@ -106,7 +121,7 @@ export function _checkAbsoluteBounds(
       isValid: false,
       errorMessage: `Price value $${formatPrice(priceValue)} is too low for ${
         bounds.name
-      }. The minimum allowed is $${formatPrice(bounds.min)}.`, 
+      }. The minimum allowed is $${formatPrice(bounds.min)}.`
     };
   }
 
@@ -115,7 +130,7 @@ export function _checkAbsoluteBounds(
       isValid: false,
       errorMessage: `Price value $${formatPrice(priceValue)} is too high for ${
         bounds.name
-      }. The maximum allowed is $${formatPrice(bounds.max)}.`, 
+      }. The maximum allowed is $${formatPrice(bounds.max)}.`
     };
   }
 
@@ -134,12 +149,21 @@ export async function validatePriceAlertValue(
   priceValue: number | string, // Allow string input
   direction: 'up' | 'down'
 ): Promise<PriceValidationResult> {
-  // Get standardized token ID
-  const standardizedId = resolveTokenAlias(tokenId);
-  if (!standardizedId || !(standardizedId in TOKEN_PRICE_BOUNDS)) {
+  const sanitizedTokenId = sanitizeTokenSymbol(tokenId);
+  if (!sanitizedTokenId) {
     return {
       isValid: false,
-      errorMessage: `Unsupported token: ${tokenId}`,
+      errorMessage: 'Token symbol cannot be empty. Please provide a valid token (e.g., "dev", "eth", "btc").',
+    };
+  }
+
+  // Get standardized token ID
+  const standardizedId = resolveTokenAlias(sanitizedTokenId);
+  if (!standardizedId || !(standardizedId in TOKEN_PRICE_BOUNDS)) {
+    const supportedTokenSymbols = Object.keys(SUPPORTED_TOKENS).map(key => `"${key}"`).join(', ');
+    return {
+      isValid: false,
+      errorMessage: `Unsupported token: "${tokenId}". Supported tokens are: ${supportedTokenSymbols}.`,
     };
   }
 
@@ -164,12 +188,12 @@ export async function validatePriceAlertValue(
 
   try {
     // Try database first
-    currentPrice = await getLatestTokenPriceFromDatabase(tokenId);
+    currentPrice = await getLatestTokenPriceFromDatabase(standardizedId);
 
     // Fallback to CoinGecko if no database price
     if (currentPrice === null) {
       logger.info(
-        `[PriceValidation] No database price for ${tokenId}, trying CoinGecko...`
+        `[PriceValidation] No database price for ${standardizedId}, trying CoinGecko...`
       );
       const coinGeckoData = await fetchTokenPrice(standardizedId);
       if (coinGeckoData?.usd) {
@@ -230,6 +254,7 @@ export async function validatePriceAlertValue(
     isValid: true,
     parsedPriceValue: validatedPriceValue,
     currentPrice: currentPrice || undefined,
+    sanitizedTokenId: standardizedId, // Return the standardized and sanitized token ID
   };
 }
 
@@ -239,7 +264,11 @@ export async function validatePriceAlertValue(
  * @returns The price bounds for the token, or null if unsupported
  */
 export function getTokenPriceBounds(tokenId: string) {
-  const standardizedId = resolveTokenAlias(tokenId);
+  const sanitizedTokenId = sanitizeTokenSymbol(tokenId);
+  if (!sanitizedTokenId) {
+    return null;
+  }
+  const standardizedId = resolveTokenAlias(sanitizedTokenId);
   if (!standardizedId || !(standardizedId in TOKEN_PRICE_BOUNDS)) {
     return null;
   }
