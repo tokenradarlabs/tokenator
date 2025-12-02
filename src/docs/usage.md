@@ -50,6 +50,28 @@ To start the Tokenator bot and connect it to Discord:
 
 Once the bot is running and invited to your Discord server (guild), you can interact with it using Discord slash commands. Commands are not invoked by passing arguments to `ts-node src/index.ts` directly after initial setup.
 
+## CLI Usage
+
+Beyond the Discord bot, Tokenator also provides command-line utilities for specific tasks.
+
+### Exporting Alerts
+
+You can export all alerts for a specific Discord server and channel directly from the command line as a JSON file. This is useful for backup or migration purposes.
+
+```bash
+npm start -- --export-alerts <DISCORD_SERVER_ID> <DISCORD_CHANNEL_ID>
+# Or, for development:
+ts-node src/index.ts --export-alerts <DISCORD_SERVER_ID> <DISCORD_CHANNEL_ID>
+```
+
+*   `<DISCORD_SERVER_ID>`: The ID of the Discord server (guild) where the alerts are configured.
+*   `<DISCORD_CHANNEL_ID>`: The ID of the specific channel within that server where the alerts are configured.
+
+The command will output a JSON string to `stdout` containing all price and volume alerts for the specified server and channel.
+
+**Note:** This command bypasses the Discord bot interface and interacts directly with the database. Ensure you have appropriate permissions and the `DATABASE_URL` environment variable is correctly set.
+
+
 **Note:** The multi-line or colon-separated examples shown below are simplified documentation representations for readability. Users should invoke the slash command in Discord and then supply parameters via Discord's UI modal, not by typing colon-separated inline parameters.
 
 ### Example Alert Commands

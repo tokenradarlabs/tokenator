@@ -110,6 +110,7 @@ import {
   handleImportAlerts,
 } from './alertCommands/importAlerts';
 import { resolveTokenAlias } from './utils/constants';
+import { exportAlerts } from './lib/alertcommands/exportAlerts';
 
 const token: string = config.DISCORD_TOKEN;
 
@@ -412,9 +413,18 @@ interface CliArgs {
   // Add other CLI arguments here as needed
 }
 
+interface CliArgs {
+  help: boolean;
+  exportAlerts: {
+    discordServerId: string;
+    channelId: string;
+  } | null;
+}
+
 function parseArgs(args: string[]): CliArgs {
   const parsedArgs: CliArgs = {
     help: false,
+    exportAlerts: null,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -423,6 +433,18 @@ function parseArgs(args: string[]): CliArgs {
       case '-h':
       case '--help':
         parsedArgs.help = true;
+        break;
+      case '--export-alerts':
+        if (i + 2 < args.length) {
+          parsedArgs.exportAlerts = {
+            discordServerId: args[++i],
+            channelId: args[++i],
+          };
+        } else {
+          logger.error('--export-alerts requires a Discord Server ID and Channel ID.');
+          printHelp();
+          process.exit(1);
+        }
         break;
       default:
         logger.error(`Unknown argument: ${arg}.`);
@@ -440,7 +462,8 @@ Usage:
   ts-node src/index.ts [options]
 
 Options:
-  -h, --help    Display this help message.
+  -h, --help                          Display this help message.
+  --export-alerts <SERVER_ID> <CHANNEL_ID>  Export all alerts for a specific Discord server and channel as JSON.
 
 Description:
   Tokenator is a feature-rich Discord bot for token price alerts and information.
@@ -449,6 +472,18 @@ Description:
   To start the bot in production mode, use 'npm start'.
   To start the bot in development mode (with hot-reloading), use 'npm run dev'.
   `);
+}
+
+async function cliExportAlerts(discordServerId: string, channelId: string): Promise<void> {
+  try {
+    const alertsJson = await exportAlerts(prisma, discordServerId, channelId);
+    console.log(alertsJson);
+    logger.info(`Alerts exported for server ${discordServerId} and channel ${channelId} via CLI.`);
+    process.exit(0);
+  } catch (error) {
+    logger.error(`Failed to export alerts via CLI for server ${discordServerId}, channel ${channelId}: ${error.message}`);
+    process.exit(1);
+  }
 }
 
 if (require.main === module) {
@@ -462,5 +497,12 @@ if (require.main === module) {
     process.exit(0);
   }
 
-  main();
+  if (cliArgs.exportAlerts) {
+    logger.info('Running alert export command...');
+    // Ensure prisma and exportAlerts are imported correctly for CLI usage
+    // This assumes `exportAlerts` is available globally or imported here
+    cliExportAlerts(cliArgs.exportAlerts.discordServerId, cliArgs.exportAlerts.channelId);
+  } else {
+    main();
+  }
 }
