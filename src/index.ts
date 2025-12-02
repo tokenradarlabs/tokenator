@@ -110,7 +110,7 @@ import {
   handleImportAlerts,
 } from './alertCommands/importAlerts';
 import { resolveTokenAlias } from './utils/constants';
-import { exportAlerts } from './lib/alertcommands/exportAlerts';
+import { exportAlerts } from './lib/alertCommands/exportAlerts';
 
 const token: string = config.DISCORD_TOKEN;
 
@@ -476,7 +476,13 @@ async function cliExportAlerts(discordServerId: string, channelId: string): Prom
     logger.info(`Alerts exported for server ${discordServerId} and channel ${channelId} via CLI.`);
     return 0;
   } catch (error) {
-    logger.error(`Failed to export alerts via CLI for server ${discordServerId}, channel ${channelId}: ${error.message}`);
+    let msg: string;
+    if (error instanceof Error) {
+      msg = error.message;
+    } else {
+      msg = String(error);
+    }
+    logger.error(`Failed to export alerts via CLI for server ${discordServerId}, channel ${channelId}: ${msg}`);
     return 1;
   } finally {
     await prisma.$disconnect();
@@ -496,8 +502,21 @@ if (require.main === module) {
 
   if (cliArgs.exportAlerts) {
     logger.info('Running alert export command...');
-    const exitCode = await cliExportAlerts(cliArgs.exportAlerts.discordServerId, cliArgs.exportAlerts.channelId);
-    process.exit(exitCode);
+    (async () => {
+      try {
+        const exitCode = await cliExportAlerts(cliArgs.exportAlerts.discordServerId, cliArgs.exportAlerts.channelId);
+        process.exit(exitCode);
+      } catch (error) {
+        let msg: string;
+        if (error instanceof Error) {
+          msg = error.message;
+        } else {
+          msg = String(error);
+        }
+        logger.error(`Unhandled error during CLI alert export: ${msg}`);
+        process.exit(1);
+      }
+    })();
   } else {
     main();
   }
