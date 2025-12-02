@@ -110,7 +110,7 @@ import {
   handleImportAlerts,
 } from './alertCommands/importAlerts';
 import { resolveTokenAlias } from './utils/constants';
-import { exportAlerts } from './lib/alertCommands/exportAlerts';
+import { exportAlerts } from './lib/alertcommands/exportAlerts';
 
 const token: string = config.DISCORD_TOKEN;
 
@@ -502,9 +502,11 @@ if (require.main === module) {
 
   if (cliArgs.exportAlerts) {
     logger.info('Running alert export command...');
+    const discordServerId = cliArgs.exportAlerts.discordServerId;
+    const channelId = cliArgs.exportAlerts.channelId;
     (async () => {
       try {
-        const exitCode = await cliExportAlerts(cliArgs.exportAlerts.discordServerId, cliArgs.exportAlerts.channelId);
+        const exitCode = await cliExportAlerts(discordServerId, channelId);
         process.exit(exitCode);
       } catch (error) {
         let msg: string;
