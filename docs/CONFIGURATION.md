@@ -52,6 +52,19 @@ Example `REDIS_URL`:
 `redis://localhost:6379/0`
 `rediss://user:password@host:port`
 
+## Database Client Initialization
+
+The application initializes the PrismaClient using a singleton pattern. This ensures that only a single instance of PrismaClient is created and reused throughout the application lifecycle. This is particularly important in development environments with hot-reloading, as it prevents the creation of multiple database connections, which can lead to performance issues or resource exhaustion. In production environments, a fresh instance is ensured with each deployment.
+
+The PrismaClient instance is exposed via `src/utils/prisma.ts` and should be imported as follows:
+
+```typescript
+import prisma from '../utils/prisma';
+
+// Use the Prisma client
+const users = await prisma.user.findMany();
+```
+
 ## Validation
 
 The system validates all environment variables at startup:
