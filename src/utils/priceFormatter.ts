@@ -1,13 +1,87 @@
-export function formatPrice(price: number, currency?: string, locale: string = 'en-US'): string {
+const DEFAULT_LOCALE = 'en-US';
+// Default precision for displaying crypto prices when no specific currency formatting is applied
+const DEFAULT_CRYPTO_PRECISION = 8;
+const DEFAULT_FIAT_PRECISION = 2;
+
+function calculatePrecisionOptions(price: number, precision?: number) {
+  let minimumFractionDigits: number;
+  let maximumFractionDigits: number;
+
+  if (precision !== undefined) {
+    minimumFractionDigits = precision;
+    maximumFractionDigits = precision;
+  } else {
+    const absolutePrice = Math.abs(price);
+    if (absolutePrice < 0.000001) {
+      minimumFractionDigits = DEFAULT_CRYPTO_PRECISION;
+      maximumFractionDigits = DEFAULT_CRYPTO_PRECISION;
+    } else if (absolutePrice < 0.01) {
+      minimumFractionDigits = 6;
+      maximumFractionDigits = 6;
+    } else if (absolutePrice < 1) {
+      minimumFractionDigits = 4;
+      maximumFractionDigits = 4;
+    } else {
+      minimumFractionDigits = DEFAULT_FIAT_PRECISION;
+      maximumFractionDigits = DEFAULT_FIAT_PRECISION;
+    }
+  }
+  return { minimumFractionDigits, maximumFractionDigits };
+}
+
+
+/**
+
+ * Formats a numerical price into a localized string, with optional currency and precision control.
+
+ *
+
+ * This function intelligently adjusts decimal precision based on the price's magnitude
+
+ * (e.g., more digits for very small crypto prices, fewer for larger fiat prices)
+
+ * unless a specific `precision` is provided.
+
+ *
+
+ * @param price The numerical price to format.
+
+ * @param currency Optional. An ISO 4217 currency code (e.g., 'USD', 'EUR') or a custom token symbol (e.g., 'ETH', 'BTC').
+
+ *   If an ISO code is provided, `Intl.NumberFormat` handles currency-specific formatting.
+
+ *   If a custom symbol, it will be appended to a decimal-formatted price.
+
+ * @param locale Optional. The locale string for formatting (e.g., 'en-US', 'de-DE'). Defaults to 'en-US'.
+
+ * @param precision Optional. The number of decimal places to fix the output to. If provided, this overrides
+
+ *   the dynamic precision logic and `Intl.NumberFormat`'s default currency precision.
+
+ * @returns A string representation of the formatted price, or "N/A" if the price is invalid.
+
+ */
+
+export function formatPrice(
+
+  price: number,
+
+  currency?: string,
+
+  locale: string = DEFAULT_LOCALE,
+
+  precision?: number
+
+): string {
   if (isNaN(price) || !isFinite(price)) {
     return "N/A";
   }
 
-  let options: Intl.NumberFormatOptions = {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  };
-
+      let options: Intl.NumberFormatOptions = {};
+  
+      const { minimumFractionDigits, maximumFractionDigits } = calculatePrecisionOptions(price, precision);
+      options.minimumFractionDigits = minimumFractionDigits;
+      options.maximumFractionDigits = maximumFractionDigits;
   let formattedPriceString: string;
 
   // Check if the currency is a valid ISO 4217 code (3 uppercase letters)
@@ -26,22 +100,11 @@ export function formatPrice(price: number, currency?: string, locale: string = '
         options.style = 'decimal';
         delete options.currency; // Remove the invalid currency option
         // Re-apply default fraction digits or determine based on price magnitude
-        const absolutePrice = Math.abs(price);
-        if (absolutePrice < 0.000001) {
-          options.minimumFractionDigits = 8;
-          options.maximumFractionDigits = 8;
-        } else if (absolutePrice < 0.01) {
-          options.minimumFractionDigits = 6;
-          options.maximumFractionDigits = 6;
-        } else if (absolutePrice < 1) {
-          options.minimumFractionDigits = 4;
-          options.maximumFractionDigits = 4;
-        } else {
-          options.minimumFractionDigits = 2;
-          options.maximumFractionDigits = 2;
-        }
+        const { minimumFractionDigits, maximumFractionDigits } = calculatePrecisionOptions(price, precision);
+        options.minimumFractionDigits = minimumFractionDigits;
+        options.maximumFractionDigits = maximumFractionDigits;
         formattedPriceString = price.toLocaleString(locale, options);
-        if (currency) {
+        if (currency) { // Only append if it was a custom currency, not an invalid ISO one already handled
           formattedPriceString += ` ${currency}`;
         }
       } else {
@@ -50,21 +113,9 @@ export function formatPrice(price: number, currency?: string, locale: string = '
     }
   } else {
     options.style = 'decimal'; // Fallback to decimal for non-ISO/crypto codes
-    const absolutePrice = Math.abs(price);
-
-    if (absolutePrice < 0.000001) { // Very small numbers, show more precision
-      options.minimumFractionDigits = 8;
-      options.maximumFractionDigits = 8;
-    } else if (absolutePrice < 0.01) {
-      options.minimumFractionDigits = 6;
-      options.maximumFractionDigits = 6;
-    } else if (absolutePrice < 1) {
-      options.minimumFractionDigits = 4;
-      options.maximumFractionDigits = 4;
-    } else { // Default for price >= 1, including price < 100
-      options.minimumFractionDigits = 2;
-      options.maximumFractionDigits = 2;
-    }
+    const { minimumFractionDigits, maximumFractionDigits } = calculatePrecisionOptions(price, precision);
+    options.minimumFractionDigits = minimumFractionDigits;
+    options.maximumFractionDigits = maximumFractionDigits;
     formattedPriceString = price.toLocaleString(locale, options);
     if (currency) {
       formattedPriceString += ` ${currency}`;
@@ -75,16 +126,20 @@ export function formatPrice(price: number, currency?: string, locale: string = '
 }
 
 /**
- * Formats a numerical price for display with optional currency suffix.
+ * Formats a numerical price specifically for display purposes, leveraging `formatPrice`.
  *
- * This function leverages `formatPrice` for consistent rounding and formatting.
- * For detailed formatting standards, refer to `docs/PRICE_FORMATTING.md`.
+ * This function serves as a convenient wrapper for `formatPrice`, ensuring that
+ * prices are consistently rounded and formatted across the CLI and exports.
+ * It allows for overriding the default precision settings if needed.
+ *
+ * For comprehensive details on formatting standards and examples, refer to `docs/PRICE_FORMATTING.md`.
  *
  * @param price The numerical price to format for display.
  * @param currency Optional. The currency unit to append (e.g., 'USD', 'ETH').
  * @param locale Optional. The locale to use for formatting. Defaults to 'en-US'.
+ * @param precision Optional. The number of decimal places to fix the output to, overriding dynamic precision.
  * @returns A string representation of the formatted price.
  */
-export function formatPriceForDisplay(price: number, currency?: string, locale?: string): string {
-  return formatPrice(price, currency, locale);
+export function formatPriceForDisplay(price: number, currency?: string, locale?: string, precision?: number): string {
+  return formatPrice(price, currency, locale, precision);
 }
