@@ -77,34 +77,54 @@ The following files were updated to use consistent price formatting:
 
 ## Usage Examples
 
+For practical demonstrations of how to use these formatting functions, consider the following TypeScript examples. These snippets illustrate various scenarios, including dynamic precision, explicit precision, different currencies, and locales.
+
 ```typescript
 import { formatPriceForDisplay, formatPrice } from '../src/utils/priceFormatter';
 
-// Basic usage with dynamic precision and default locale (en-US)
-console.log(`Current price: ${formatPriceForDisplay(0.00000012345, 'ETH')}`);
-// Result: "Current price: 0.00000012 ETH"
+// --- Using formatPriceForDisplay (dynamic precision by default) ---
 
-console.log(`Current price: ${formatPriceForDisplay(0.00012345, 'LINK')}`);
-// Result: "Current price: 0.000123 LINK"
+// Very small crypto price (< $0.000001): 8 decimal places
+console.log(`ETH Price: ${formatPriceForDisplay(0.00000012345678, 'ETH')}`);
+// Expected: "ETH Price: 0.00000012 ETH"
 
-console.log(`Current price: ${formatPriceForDisplay(0.56789, 'BTC')}`);
-// Result: "Current price: 0.5679 BTC"
+// Small crypto price (between $0.000001 and < $0.01): 6 decimal places
+console.log(`LINK Price: ${formatPriceForDisplay(0.000123456, 'LINK')}`);
+// Expected: "LINK Price: 0.000123 LINK"
 
-console.log(`Current price: ${formatPriceForDisplay(12.345, 'USD')}`);
-// Result: "Current price: $12.35"
+// Medium crypto price (between $0.01 and < $1.00): 4 decimal places
+console.log(`BTC Price: ${formatPriceForDisplay(0.56789, 'BTC')}`);
+// Expected: "BTC Price: 0.5679 BTC"
 
-console.log(`Large value: ${formatPriceForDisplay(1234.56, 'USD')}`);
-// Result: "Large value: $1,234.56"
+// Fiat-like price (>= $1.00): 2 decimal places
+console.log(`USD Price: ${formatPriceForDisplay(12.345, 'USD')}`);
+// Expected: "USD Price: $12.35"
 
-// Using explicit precision
-console.log(`Price with fixed precision: ${formatPriceForDisplay(123.45678, 'EUR', 'de-DE', 2)}`);
-// Result: "Price with fixed precision: 123,46 €"
+// Large fiat value with comma separator (en-US locale)
+console.log(`Portfolio Value: ${formatPriceForDisplay(1234567.89, 'USD')}`);
+// Expected: "Portfolio Value: $1,234,567.89"
 
-// Formatting without currency for alert thresholds
-console.log(`Threshold: ${formatPrice(1234.56789, undefined, undefined, 4)}`);
-// Result: "Threshold: 1234.5679"
+// --- Using formatPrice (for more control, e.g., alert thresholds) ---
 
-// Formatting with a different locale and no currency
-console.log(`German locale, no currency: ${formatPrice(9876.54, undefined, 'de-DE')}`);
-// Result: "German locale, no currency: 9.876,54"
+// Custom precision (4 decimal places) for a threshold
+console.log(`Alert Threshold (custom precision): ${formatPrice(1234.56789, undefined, 'en-US', 4)}`);
+// Expected: "Alert Threshold (custom precision): 1,234.5679"
+
+// Explicit precision (2 decimal places) for display with EUR currency and German locale
+console.log(`EUR Price (de-DE, 2 precision): ${formatPriceForDisplay(9876.54321, 'EUR', 'de-DE', 2)}`);
+// Expected: "EUR Price (de-DE, 2 precision): 9.876,54 €"
+
+// Dynamic precision with a custom token symbol
+console.log(`Custom Token Value: ${formatPrice(123.456789, 'MYTOKEN', 'en-GB')}`);
+// Expected: "Custom Token Value: 123.46 MYTOKEN"
+
+// Handling prices that are not finite or invalid
+console.log(`Invalid Price: ${formatPrice(NaN, 'USD')}`);
+// Expected: "Invalid Price: N/A"
 ```
+
+## Related File
+
+For the full implementation details, refer to the source code: [`src/utils/priceFormatter.ts`](../src/utils/priceFormatter.ts)
+
+
