@@ -6,19 +6,18 @@ This document outlines the standardized price formatting rules implemented acros
 
 ## Formatting Rules
 
-The price formatting follows these rules based on the price value:
+Price formatting is dynamically adjusted based on the price value and whether an explicit `precision` is provided. The rules are:
 
-1. **Very small prices** (< $0.01): 6 decimal places for precision
-   - Example: $0.000123 → `$0.000123`
+1.  **Very small crypto prices** (< $0.000001): `DEFAULT_CRYPTO_PRECISION` (8) decimal places.
+    -   Example: `0.00000012345` → `0.00000012`
+2.  **Small crypto prices** (between $0.000001 and < $0.01): 6 decimal places.
+    -   Example: `0.00012345` → `0.000123`
+3.  **Medium crypto prices** (between $0.01 and < $1.00): 4 decimal places.
+    -   Example: `0.56789` → `0.5679`
+4.  **Fiat-like prices** (>= $1.00): `DEFAULT_FIAT_PRECISION` (2) decimal places.
+    -   Example: `12.345` → `12.35`
 
-2. **Small prices** (< $1.00): 4 decimal places
-   - Example: $0.5678 → `$0.5678`
-
-3. **Medium prices** (< $100.00): 2 decimal places
-   - Example: $12.345 → `$12.35`
-
-4. **Large prices** (>= $100.00): Locale formatting with commas and 2 decimal places
-   - Example: $1234.56 → `$1,234.56`
+If a `precision` parameter is explicitly provided to `formatPrice` or `formatPriceForDisplay`, it will override these dynamic rules.
 
 ## Implementation
 
@@ -26,8 +25,11 @@ The price formatting follows these rules based on the price value:
 
 All price formatting is handled by the centralized utility functions in `src/utils/priceFormatter.ts`:
 
-- `formatPrice(price: number)`: Returns formatted price without currency symbol
-- `formatPriceForDisplay(price: number)`: Returns formatted price with $ prefix
+-   `formatPrice(price: number, currency?: string, locale?: string, precision?: number)`:
+    Formats a price as a string. It can optionally take a `currency` (ISO 4217 code like 'USD' or custom like 'ETH'), a `locale` (defaults to 'en-US'), and `precision` (number of decimal places).
+    If `precision` is not provided, dynamic precision rules apply.
+-   `formatPriceForDisplay(price: number, currency?: string, locale?: string, precision?: number)`:
+    A wrapper around `formatPrice` for display purposes. It accepts the same parameters and ensures consistent display formatting.
 
 ### Files Updated
 
@@ -76,13 +78,33 @@ The following files were updated to use consistent price formatting:
 ## Usage Examples
 
 ```typescript
-import { formatPriceForDisplay, formatPrice } from './utils/priceFormatter';
+import { formatPriceForDisplay, formatPrice } from '../src/utils/priceFormatter';
 
-// For Discord messages
-const message = `Current price: ${formatPriceForDisplay(0.00123)}`;
-// Result: "Current price: $0.001230"
+// Basic usage with dynamic precision and default locale (en-US)
+console.log(`Current price: ${formatPriceForDisplay(0.00000012345, 'ETH')}`);
+// Result: "Current price: 0.00000012 ETH"
 
-// For alert thresholds (without $)
-const threshold = formatPrice(1234.56);
-// Result: "1,234.56"
+console.log(`Current price: ${formatPriceForDisplay(0.00012345, 'LINK')}`);
+// Result: "Current price: 0.000123 LINK"
+
+console.log(`Current price: ${formatPriceForDisplay(0.56789, 'BTC')}`);
+// Result: "Current price: 0.5679 BTC"
+
+console.log(`Current price: ${formatPriceForDisplay(12.345, 'USD')}`);
+// Result: "Current price: $12.35"
+
+console.log(`Large value: ${formatPriceForDisplay(1234.56, 'USD')}`);
+// Result: "Large value: $1,234.56"
+
+// Using explicit precision
+console.log(`Price with fixed precision: ${formatPriceForDisplay(123.45678, 'EUR', 'de-DE', 2)}`);
+// Result: "Price with fixed precision: 123,46 €"
+
+// Formatting without currency for alert thresholds
+console.log(`Threshold: ${formatPrice(1234.56789, undefined, undefined, 4)}`);
+// Result: "Threshold: 1234.5679"
+
+// Formatting with a different locale and no currency
+console.log(`German locale, no currency: ${formatPrice(9876.54, undefined, 'de-DE')}`);
+// Result: "German locale, no currency: 9.876,54"
 ```
