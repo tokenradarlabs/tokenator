@@ -109,7 +109,7 @@ export function formatPrice(
           }
         }
         formattedPriceString = price.toLocaleString(locale, options);
-        if (currency && !isISO4217) { // Only append if it was a custom currency, not an invalid ISO one already handled
+        if (currency) { // Only append if it was a custom currency, not an invalid ISO one already handled
           formattedPriceString += ` ${currency}`;
         }
       } else {
