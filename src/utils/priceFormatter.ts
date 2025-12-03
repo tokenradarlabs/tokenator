@@ -3,6 +3,33 @@ const DEFAULT_LOCALE = 'en-US';
 const DEFAULT_CRYPTO_PRECISION = 8;
 const DEFAULT_FIAT_PRECISION = 2;
 
+function calculatePrecisionOptions(price: number, precision?: number) {
+  let minimumFractionDigits: number;
+  let maximumFractionDigits: number;
+
+  if (precision !== undefined) {
+    minimumFractionDigits = precision;
+    maximumFractionDigits = precision;
+  } else {
+    const absolutePrice = Math.abs(price);
+    if (absolutePrice < 0.000001) {
+      minimumFractionDigits = DEFAULT_CRYPTO_PRECISION;
+      maximumFractionDigits = DEFAULT_CRYPTO_PRECISION;
+    } else if (absolutePrice < 0.01) {
+      minimumFractionDigits = 6;
+      maximumFractionDigits = 6;
+    } else if (absolutePrice < 1) {
+      minimumFractionDigits = 4;
+      maximumFractionDigits = 4;
+    } else {
+      minimumFractionDigits = DEFAULT_FIAT_PRECISION;
+      maximumFractionDigits = DEFAULT_FIAT_PRECISION;
+    }
+  }
+  return { minimumFractionDigits, maximumFractionDigits };
+}
+
+
 /**
 
  * Formats a numerical price into a localized string, with optional currency and precision control.
@@ -52,25 +79,9 @@ export function formatPrice(
 
       let options: Intl.NumberFormatOptions = {};
   
-      if (precision !== undefined) {
-          options.minimumFractionDigits = precision;
-          options.maximumFractionDigits = precision;
-      } else {
-          const absolutePrice = Math.abs(price);
-          if (absolutePrice < 0.000001) {
-              options.minimumFractionDigits = DEFAULT_CRYPTO_PRECISION;
-              options.maximumFractionDigits = DEFAULT_CRYPTO_PRECISION;
-          } else if (absolutePrice < 0.01) {
-              options.minimumFractionDigits = 6;
-              options.maximumFractionDigits = 6;
-          } else if (absolutePrice < 1) {
-              options.minimumFractionDigits = 4;
-              options.maximumFractionDigits = 4;
-          } else {
-              options.minimumFractionDigits = DEFAULT_FIAT_PRECISION;
-              options.maximumFractionDigits = DEFAULT_FIAT_PRECISION;
-          }
-      }
+      const { minimumFractionDigits, maximumFractionDigits } = calculatePrecisionOptions(price, precision);
+      options.minimumFractionDigits = minimumFractionDigits;
+      options.maximumFractionDigits = maximumFractionDigits;
   let formattedPriceString: string;
 
   // Check if the currency is a valid ISO 4217 code (3 uppercase letters)
@@ -89,25 +100,9 @@ export function formatPrice(
         options.style = 'decimal';
         delete options.currency; // Remove the invalid currency option
         // Re-apply default fraction digits or determine based on price magnitude
-        if (precision !== undefined) {
-          options.minimumFractionDigits = precision;
-          options.maximumFractionDigits = precision;
-        } else {
-          const absolutePrice = Math.abs(price);
-          if (absolutePrice < 0.000001) {
-            options.minimumFractionDigits = DEFAULT_CRYPTO_PRECISION;
-            options.maximumFractionDigits = DEFAULT_CRYPTO_PRECISION;
-          } else if (absolutePrice < 0.01) {
-            options.minimumFractionDigits = 6;
-            options.maximumFractionDigits = 6;
-          } else if (absolutePrice < 1) {
-            options.minimumFractionDigits = 4;
-            options.maximumFractionDigits = 4;
-          } else {
-            options.minimumFractionDigits = DEFAULT_FIAT_PRECISION;
-            options.maximumFractionDigits = DEFAULT_FIAT_PRECISION;
-          }
-        }
+        const { minimumFractionDigits, maximumFractionDigits } = calculatePrecisionOptions(price, precision);
+        options.minimumFractionDigits = minimumFractionDigits;
+        options.maximumFractionDigits = maximumFractionDigits;
         formattedPriceString = price.toLocaleString(locale, options);
         if (currency) { // Only append if it was a custom currency, not an invalid ISO one already handled
           formattedPriceString += ` ${currency}`;
@@ -118,26 +113,9 @@ export function formatPrice(
     }
   } else {
     options.style = 'decimal'; // Fallback to decimal for non-ISO/crypto codes
-
-    if (precision !== undefined) {
-      options.minimumFractionDigits = precision;
-      options.maximumFractionDigits = precision;
-    } else {
-      const absolutePrice = Math.abs(price);
-      if (absolutePrice < 0.000001) { // Very small numbers, show more precision
-        options.minimumFractionDigits = DEFAULT_CRYPTO_PRECISION;
-        options.maximumFractionDigits = DEFAULT_CRYPTO_PRECISION;
-      } else if (absolutePrice < 0.01) {
-        options.minimumFractionDigits = 6;
-        options.maximumFractionDigits = 6;
-      } else if (absolutePrice < 1) {
-        options.minimumFractionDigits = 4;
-        options.maximumFractionDigits = 4;
-      } else { // Default for price >= 1, including price < 100
-        options.minimumFractionDigits = DEFAULT_FIAT_PRECISION;
-        options.maximumFractionDigits = DEFAULT_FIAT_PRECISION;
-      }
-    }
+    const { minimumFractionDigits, maximumFractionDigits } = calculatePrecisionOptions(price, precision);
+    options.minimumFractionDigits = minimumFractionDigits;
+    options.maximumFractionDigits = maximumFractionDigits;
     formattedPriceString = price.toLocaleString(locale, options);
     if (currency) {
       formattedPriceString += ` ${currency}`;
